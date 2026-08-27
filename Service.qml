@@ -12,13 +12,11 @@ Item {
   property int windowHeight: 600
   property string lastStatus: "starting"
   property string lastError: ""
-  property string lastSummary: "Starting geometry service"
   property var lastGeometry: null
   property bool rerunPending: false
   property int absentRetryCount: 0
   property string processOutput: ""
   property string processError: ""
-  property string bindingStatus: "starting"
   property string bindingLabel: "..."
   property string bindingOutput: ""
   property string bindingError: ""
@@ -186,7 +184,6 @@ Item {
     }
 
     if (exitCode === 0 && parsed) {
-      bindingStatus = String(parsed.status || "error")
       var labels = []
       var bindings = Array.isArray(parsed.bindings) ? parsed.bindings : []
       for (var index = 0; index < bindings.length; index++) {
@@ -195,7 +192,6 @@ Item {
       }
       bindingLabel = labels.length > 0 ? labels.join(" / ") : "Unbound"
     } else {
-      bindingStatus = "error"
       bindingLabel = "Unbound"
       lastError = String(bindingError || "").trim()
         || "CLIamp binding adapter failed"
@@ -224,28 +220,21 @@ Item {
       lastStatus = String(parsed.status || "error")
       if (lastStatus === "absent") {
         lastError = ""
-        lastSummary = "Waiting for CLIamp"
       } else if (lastStatus === "unavailable") {
         lastError = "CLIamp is not installed"
-        lastSummary = lastError
       } else if (lastStatus === "applied") {
         absentRetryCount = 0
         lastError = parsed.clientCount > 1
           ? "More than one CLIamp client exists" : ""
-        lastSummary = parsed.actual.width + "x" + parsed.actual.height
-          + " at " + parsed.actual.x + "," + parsed.actual.y
-          + " on " + parsed.monitor.name
       } else {
         lastError = lastStatus === "mismatch"
           ? "Hyprland did not accept the exact geometry"
           : "CLIamp disappeared while geometry was applied"
-        lastSummary = lastError
       }
     } else {
       lastStatus = "error"
       lastError = String(processError || "").trim()
         || "Geometry helper failed with exit " + exitCode
-      lastSummary = lastError
     }
 
     if (rerunPending) {

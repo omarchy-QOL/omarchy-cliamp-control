@@ -33,37 +33,30 @@ require_command jq
 require_command hyprctl
 
 client_json="$(first_client_json)"
-if [[ $client_json != "null" ]]; then
-  if ! quake_toggle_client "$client_json" "$STOCK_WORKSPACE"; then
-    notify_error "Hyprland returned an invalid window address"
+if [[ $client_json == "null" ]]; then
+  require_command cliamp
+  require_command omarchy-launch-or-focus-tui
+
+  omarchy-launch-or-focus-tui \
+    "--app-id=$CLIAMP_MANAGED_CLASS" cliamp >/dev/null 2>&1 &
+
+  wait_attempts="${CLIAMP_WAIT_ATTEMPTS:-100}"
+  wait_interval="${CLIAMP_WAIT_INTERVAL:-0.05}"
+  if [[ ! $wait_attempts =~ ^[1-9][0-9]*$ ]]; then
+    notify_error "CLIAMP_WAIT_ATTEMPTS must be a positive integer"
+    exit 2
+  fi
+
+  for ((attempt = 0; attempt < wait_attempts; attempt++)); do
+    sleep "$wait_interval"
+    client_json="$(first_client_json)"
+    [[ $client_json != "null" ]] && break
+  done
+
+  if [[ $client_json == "null" ]]; then
+    notify_error "window did not appear"
     exit 1
   fi
-  exit 0
-fi
-
-require_command cliamp
-require_command omarchy-launch-or-focus-tui
-
-omarchy-launch-or-focus-tui \
-  "--app-id=$CLIAMP_MANAGED_CLASS" cliamp >/dev/null 2>&1 &
-
-wait_attempts="${CLIAMP_WAIT_ATTEMPTS:-100}"
-wait_interval="${CLIAMP_WAIT_INTERVAL:-0.05}"
-if [[ ! $wait_attempts =~ ^[1-9][0-9]*$ ]]; then
-  notify_error "CLIAMP_WAIT_ATTEMPTS must be a positive integer"
-  exit 2
-fi
-
-client_json="null"
-for ((attempt = 0; attempt < wait_attempts; attempt++)); do
-  sleep "$wait_interval"
-  client_json="$(first_client_json)"
-  [[ $client_json != "null" ]] && break
-done
-
-if [[ $client_json == "null" ]]; then
-  notify_error "window did not appear"
-  exit 1
 fi
 
 if ! quake_toggle_client "$client_json" "$STOCK_WORKSPACE"; then

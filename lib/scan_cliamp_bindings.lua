@@ -144,6 +144,9 @@ hl = setmetatable({
   get_active_window = function()
     return nil
   end,
+  get_active_monitor = function()
+    return nil
+  end,
   get_config = function()
     return nil
   end,

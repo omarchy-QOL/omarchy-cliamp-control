@@ -106,7 +106,6 @@ Panel {
 
   function persistDimension(name, value) {
     persistSetting(name, Math.max(1, Math.min(100000, Number(value))))
-    syncService()
   }
 
   function launchCliamp() {
@@ -121,7 +120,6 @@ Panel {
 
   function cycleAlignment() {
     persistSetting("alignment", nextAlignment())
-    syncService()
   }
 
   function hideIcon() {

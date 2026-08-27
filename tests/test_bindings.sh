@@ -15,6 +15,10 @@ mkdir -p "$MOCK_BIN"
 
 cat >"$CONFIG_FILE" <<'LUA'
 require("default.hypr.helpers")
+local monitor = hl.get_active_monitor()
+if monitor and monitor.scale and monitor.scale <= 0 then
+  error("invalid active monitor")
+end
 o.bind(
   "SUPER + SHIFT + ALT + M",
   "My renamed player",

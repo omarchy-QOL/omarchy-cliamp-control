@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.ilyazar.cliamp",
   "name": "CLIamp Window Control",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "ilyaZar",
   "license": "MIT",
   "description": "Adds a binding-scoped CLIamp drop-down with configurable top-edge geometry and compact bar controls.",
