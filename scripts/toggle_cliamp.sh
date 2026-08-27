@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly STOCK_WORKSPACE="cliamp"
+readonly THUNDER_ASSET="${CLIAMP_THUNDER_ASSET:-${XDG_DATA_HOME:-$HOME/.local/share}/cliamp/thunder.webm}"
 
 # shellcheck source=lib/clients.sh
 source "$SCRIPT_DIR/../lib/clients.sh"
@@ -37,8 +38,11 @@ if [[ $client_json == "null" ]]; then
   require_command cliamp
   require_command omarchy-launch-or-focus-tui
 
-  omarchy-launch-or-focus-tui \
-    "--app-id=$CLIAMP_MANAGED_CLASS" cliamp >/dev/null 2>&1 &
+  launch_args=("--app-id=$CLIAMP_MANAGED_CLASS" cliamp)
+  if [[ -r "$THUNDER_ASSET" ]]; then
+    launch_args+=(--auto-play "$THUNDER_ASSET")
+  fi
+  omarchy-launch-or-focus-tui "${launch_args[@]}" >/dev/null 2>&1 &
 
   wait_attempts="${CLIAMP_WAIT_ATTEMPTS:-100}"
   wait_interval="${CLIAMP_WAIT_INTERVAL:-0.05}"

@@ -12,8 +12,10 @@ export CLIAMP_TEST_CALLS="$TEMP_ROOT/calls"
 export CLIAMP_TEST_LAUNCHED="$TEMP_ROOT/launched"
 export CLIAMP_TEST_MODE="$TEMP_ROOT/mode"
 export CLIAMP_TEST_VISIBLE="$TEMP_ROOT/visible"
+export CLIAMP_THUNDER_ASSET="$TEMP_ROOT/thunder.webm"
 
 mkdir -p "$MOCK_BIN"
+touch "$CLIAMP_THUNDER_ASSET"
 
 cat >"$MOCK_BIN/hyprctl" <<'MOCK'
 #!/bin/bash
@@ -110,7 +112,7 @@ run_toggle() {
 
 reset_case absent ""
 run_toggle
-grep -Fxq -- '--app-id=org.omarchy.cliamp.quake cliamp' \
+grep -Fxq -- "--app-id=org.omarchy.cliamp.quake cliamp --auto-play $CLIAMP_THUNDER_ASSET" \
   "$CLIAMP_TEST_CALLS"
 grep -Fq 'workspace = "special:cliamp"' "$CLIAMP_TEST_CALLS"
 grep -Fq 'toggle_special("cliamp")' "$CLIAMP_TEST_CALLS"
@@ -134,13 +136,13 @@ grep -Fq 'workspace = "special:cliamp"' "$CLIAMP_TEST_CALLS"
 
 reset_case stock ""
 run_toggle
-grep -Fxq -- '--app-id=org.omarchy.cliamp.quake cliamp' \
+grep -Fxq -- "--app-id=org.omarchy.cliamp.quake cliamp --auto-play $CLIAMP_THUNDER_ASSET" \
   "$CLIAMP_TEST_CALLS"
 grep -Fq 'workspace = "special:cliamp"' "$CLIAMP_TEST_CALLS"
 
 reset_case legacy "special:music"
 run_toggle
-grep -Fxq -- '--app-id=org.omarchy.cliamp.quake cliamp' \
+grep -Fxq -- "--app-id=org.omarchy.cliamp.quake cliamp --auto-play $CLIAMP_THUNDER_ASSET" \
   "$CLIAMP_TEST_CALLS"
 grep -Fq 'workspace = "special:cliamp"' "$CLIAMP_TEST_CALLS"
 grep -Fq 'toggle_special("cliamp")' "$CLIAMP_TEST_CALLS"

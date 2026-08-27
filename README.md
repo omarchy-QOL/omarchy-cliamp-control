@@ -23,6 +23,9 @@ usable rectangle, below any reserved screen area.
 - `bash`, `jq`, `lua`, and `hyprctl`
 - `cliamp`, which is included in a standard Omarchy installation
 
+When readable, `~/.local/share/cliamp/thunder.webm` is passed to CLIamp with
+`--auto-play`. Without that optional file, CLIamp launches normally.
+
 The plugin does not change CLIamp's audio sources or edit Hyprland configuration
 files. Its binding adapter launches the managed app ID
 `org.omarchy.cliamp.quake` through Omarchy's native TUI launcher. The ordinary
@@ -69,10 +72,12 @@ removed from the preinstalled packages, the settings panel reports that it is
 not installed.
 
 Left click calls the included `scripts/toggle_cliamp.sh` adapter. It reuses an
-existing managed client or launches CLIamp with the plugin-owned app ID. The
-client is moved to `special:cliamp` and shown or hidden without creating
-duplicates. Generic special-workspace mechanics live separately in
-`lib/quake.sh`; CLIamp selection and launch details stay in the thin adapter.
+existing managed client or launches CLIamp with the plugin-owned app ID. When
+the optional thunderstorm asset exists, a new client starts playing it
+immediately. The client is moved to `special:cliamp` and shown or hidden
+without creating duplicates. Generic special-workspace mechanics live
+separately in `lib/quake.sh`; CLIamp selection and launch details stay in the
+thin adapter.
 
 ## Keybinding
 
