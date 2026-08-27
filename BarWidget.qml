@@ -23,7 +23,8 @@ Panel {
   readonly property int windowHeight: intSetting(
     "windowHeight", 600)
   readonly property bool iconVisible: setting("iconVisible", true) === true
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color foreground: bar
+    ? bar.barForeground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
@@ -173,18 +174,7 @@ Panel {
     bar: root.bar
     active: root.opened
     tooltipText: root.tooltip
-    iconComponent: Component {
-      Image {
-        anchors.centerIn: parent
-        width: Style.space(15)
-        height: width
-        source: Qt.resolvedUrl("assets/winamp-logo.svg")
-        sourceSize.width: 48
-        sourceSize.height: 48
-        fillMode: Image.PreserveAspectFit
-        smooth: true
-      }
-    }
+    text: ""
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.LeftButton) root.launchCliamp()
       else if (buttonCode === Qt.RightButton) root.toggle()
