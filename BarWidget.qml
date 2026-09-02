@@ -66,10 +66,10 @@ Panel {
     for (var j = 0; j < lines.length; j++) {
       var line = String(lines[j])
       var missing = width - line.length
-      while (missing-- > 0) line += "&#160;"
+      while (missing-- > 0) line += "\u00a0"
       padded.push(line)
     }
-    return "<pre>" + padded.join("\n") + "</pre>"
+    return padded.join("\n")
   }
 
   function intSetting(name, fallback) {
