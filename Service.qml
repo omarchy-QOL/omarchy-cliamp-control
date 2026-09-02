@@ -13,8 +13,9 @@ Item {
   property string lastStatus: "starting"
   property string lastError: ""
   property var lastGeometry: null
+  property string lastRuleSignature: ""
+  property bool migrationPending: true
   property bool rerunPending: false
-  property int absentRetryCount: 0
   property string processOutput: ""
   property string processError: ""
   property string bindingLabel: "..."
@@ -27,7 +28,7 @@ Item {
   readonly property string managedClass: "org.omarchy.cliamp.quake"
   readonly property string pluginDir: localPath(Qt.resolvedUrl("."))
   readonly property string applyScript: localPath(
-    Qt.resolvedUrl("scripts/apply_geometry.sh"))
+    Qt.resolvedUrl("scripts/apply_workspace.sh"))
   readonly property string bindingScript: localPath(
     Qt.resolvedUrl("scripts/sync_bindings.sh"))
   readonly property string teardownCommand: [
@@ -107,7 +108,7 @@ Item {
       if (!Array.isArray(entries)) continue
       for (var i = 0; i < entries.length; i++) {
         var entry = entries[i]
-        if (entry && String(entry.id || entry) === "io.github.ilyazar.cliamp")
+        if (entry && String(entry.id || entry) === pluginId)
           return typeof entry === "object" ? entry : { id: entry }
       }
     }
@@ -144,7 +145,7 @@ Item {
     applyTimer.restart()
   }
 
-  function applyGeometry() {
+  function applyWorkspace() {
     if (tearingDown) return
     if (applyProcess.running) {
       rerunPending = true
@@ -157,7 +158,9 @@ Item {
       applyScript,
       alignment,
       String(windowWidth),
-      String(windowHeight)
+      String(windowHeight),
+      lastRuleSignature,
+      String(migrationPending)
     ]
     applyProcess.running = true
   }
@@ -215,26 +218,18 @@ Item {
       }
     }
 
-    if (parsed) {
+    if (exitCode === 0 && parsed) {
       lastGeometry = parsed
       lastStatus = String(parsed.status || "error")
-      if (lastStatus === "absent") {
-        lastError = ""
-      } else if (lastStatus === "unavailable") {
-        lastError = "CLIamp is not installed"
-      } else if (lastStatus === "applied") {
-        absentRetryCount = 0
+      lastRuleSignature = String(parsed.signature || "")
+      migrationPending = false
+      if (parsed.clientCount !== null && parsed.clientCount !== undefined)
         lastError = parsed.clientCount > 1
           ? "More than one CLIamp client exists" : ""
-      } else {
-        lastError = lastStatus === "mismatch"
-          ? "Hyprland did not accept the exact geometry"
-          : "CLIamp disappeared while geometry was applied"
-      }
     } else {
       lastStatus = "error"
       lastError = String(processError || "").trim()
-        || "Geometry helper failed with exit " + exitCode
+        || "Workspace rule helper failed with exit " + exitCode
     }
 
     if (rerunPending) {
@@ -250,24 +245,19 @@ Item {
   function handleHyprlandEvent(event) {
     if (tearingDown) return
     var name = eventName(event)
-    var relevant = [
-      "openwindow",
-      "closewindow",
-      "movewindow",
-      "movewindowv2",
-      "changefloatingmode",
-      "workspace",
-      "workspacev2",
+    var layoutEvents = [
       "focusedmon",
-      "activespecial",
-      "activespecialv2",
       "monitoradded",
       "monitoraddedv2",
       "monitorremoved",
-      "configreloaded"
+      "monitorremovedv2"
     ]
-    if (relevant.indexOf(name) >= 0) scheduleApply(120)
-    if (name === "configreloaded") bindingTimer.restart()
+    if (layoutEvents.indexOf(name) >= 0) scheduleApply(120)
+    if (name === "configreloaded") {
+      lastRuleSignature = ""
+      scheduleApply(120)
+      bindingTimer.restart()
+    }
   }
 
   function teardown() {
@@ -275,7 +265,6 @@ Item {
     tearingDown = true
     applyTimer.stop()
     bindingTimer.stop()
-    absentRetryTimer.stop()
     rerunPending = false
     bindingRerunPending = false
     if (applyProcess.running) applyProcess.running = false
@@ -306,13 +295,15 @@ Item {
 
   Connections {
     target: Hyprland
+    ignoreUnknownSignals: true
+    function onFocusedMonitorChanged() { root.scheduleApply(30) }
     function onRawEvent(event) { root.handleHyprlandEvent(event) }
   }
 
   Timer {
     id: applyTimer
     interval: 120
-    onTriggered: root.applyGeometry()
+    onTriggered: root.applyWorkspace()
   }
 
   Timer {
@@ -322,16 +313,10 @@ Item {
   }
 
   Timer {
-    id: absentRetryTimer
-    interval: Math.min(15000, 2000 * Math.pow(2,
-      Math.min(root.absentRetryCount, 3)))
-    running: !root.tearingDown && (root.lastStatus === "absent"
-      || root.lastStatus === "unavailable")
+    interval: 5000
+    running: !root.tearingDown
     repeat: true
-    onTriggered: {
-      root.absentRetryCount++
-      root.scheduleApply(30)
-    }
+    onTriggered: root.scheduleApply(30)
   }
 
   Process {
