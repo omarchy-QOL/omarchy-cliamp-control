@@ -1,14 +1,13 @@
 # CLIamp Window Control for Omarchy Quattro
 
-A self-contained Omarchy Quattro plugin that gives CLIamp a configurable
-Guake-style drop-down window. Its bar control uses the classic Winamp
-lightning-bolt logo.
+A self-contained Omarchy Quattro plugin that gives CLIamp a configurable Quake
+console workspace. Its bar control uses the classic Winamp lightning-bolt logo.
 
 - Left click shows or hides the CLIamp drop-down.
 - Right click opens alignment and size settings.
 - Horizontal alignment is Left, Center, or Right.
 - Width and height use editable numeric fields with 50 px arrow steps.
-- Existing effective CLIamp bindings trigger the shipped drop-down adapter.
+- Existing effective CLIamp bindings toggle the managed special workspace.
 - Ordinary CLIamp windows launched outside those bindings stay ordinary.
 - Hiding the bar icon requires explicit confirmation.
 - Geometry management continues while the bar icon is hidden.
@@ -18,7 +17,7 @@ usable rectangle, below any reserved screen area.
 
 ## Requirements
 
-- Omarchy Quattro with the manifest-based shell plugin runtime
+- Omarchy Quattro with the current `qconsole.lua` presentation
 - Hyprland 0.55 or newer with the Lua provider
 - `bash`, `jq`, `lua`, and `hyprctl`
 - `cliamp`, which is included in a standard Omarchy installation
@@ -26,8 +25,12 @@ usable rectangle, below any reserved screen area.
 When readable, `~/.local/share/cliamp/thunder.webm` is passed to CLIamp with
 `--auto-play`. Without that optional file, CLIamp launches normally.
 
-The plugin does not change CLIamp's audio sources or edit Hyprland configuration
-files. Its binding adapter launches the managed app ID
+The required Quake-console implementation landed after the `v4.0.2` stable
+tag. Until a numbered release includes it, use a Quattro build at or after
+commit `fa955bfa9d2c94339f452e4c56cb5bbfc5e1718e`.
+
+The plugin does not change CLIamp's audio sources or edit Hyprland
+configuration files. Its lazy workspace seed launches the managed app ID
 `org.omarchy.cliamp.quake` through Omarchy's native TUI launcher. The ordinary
 `org.omarchy.cliamp` app ID and older `org.omarchy.quake.music` windows are
 deliberately excluded.
@@ -62,22 +65,17 @@ are stored inline on the widget's `shell.json` layout entry through the shell's
 supported `updateEntryInline` method. The recovery helper uses `omarchy bar`
 commands instead of editing `shell.json`.
 
-The service listens for relevant Hyprland window, workspace, special-workspace,
-and monitor events. It selects only `org.omarchy.cliamp.quake`. A tiled managed
-window is floated before its exact size and position are applied.
+The service applies one rule to `special:cliamp`, then refits it when the
+focused monitor, monitor layout, settings, or Hyprland configuration changes.
+A low-frequency health check restores the dynamic rule after a configuration
+reload that emits no socket event. It does not poll for a client or
+continuously resize a window.
 
-While no client exists, a fallback check backs off from two seconds to fifteen
-seconds. There is no periodic polling after a client is found. If CLIamp was
-removed from the preinstalled packages, the settings panel reports that it is
-not installed.
-
-Left click calls the included `scripts/toggle_cliamp.sh` adapter. It reuses an
-existing managed client or launches CLIamp with the plugin-owned app ID. When
-the optional thunderstorm asset exists, a new client starts playing it
-immediately. The client is moved to `special:cliamp` and shown or hidden
-without creating duplicates. Generic special-workspace mechanics live
-separately in `lib/quake.sh`; CLIamp selection and launch details stay in the
-thin adapter.
+Left click calls `scripts/toggle_cliamp.sh`, which only toggles the managed
+special workspace. Hyprland's `on_created_empty` rule launches CLIamp lazily
+with the plugin-owned app ID. When the optional thunderstorm asset exists, the
+new client starts playing it immediately. Closing CLIamp leaves an empty
+workspace that is seeded again the next time it opens.
 
 ## Keybinding
 
@@ -100,9 +98,9 @@ personal bindings file in Omarchy's configured editor.
 
 ## Geometry
 
-The helper reads `hyprctl clients -j` and `hyprctl monitors -j`. A present
-client selects its reported monitor ID. Only an absent client falls back to the
-focused monitor.
+The helper reads the focused monitor from `hyprctl monitors -j`. Until a
+monitor is available, it installs a safe full-work-area rule so the workspace
+is never created without its lazy seed.
 
 Hyprland reports monitor pixel dimensions before output transform. The plugin
 swaps width and height for odd transforms, divides by scale, and applies the
@@ -117,14 +115,18 @@ usable width   = logical width - reserved left - reserved right
 usable height  = logical height - reserved top - reserved bottom
 ```
 
-Requested dimensions are clamped to the usable rectangle. Left uses
-`usable x`, Center adds half the remaining horizontal space, and Right uses the
-usable right edge minus the clamped width. Every result is integral and keeps
-the complete window reachable.
+Requested dimensions are clamped to the usable rectangle. The remaining width
+becomes workspace gaps on the right for Left, on both sides for Center, and on
+the left for Right. The remaining height becomes the bottom gap, while the top
+gap stays zero. Hyprland therefore lays out the tiled client at the requested
+top-edge geometry without window move or resize dispatches.
 
-The runtime floats tiled clients, then applies the result with current
-Hyprland Lua dispatchers through `hyprctl eval` and an exact client address. It
-does not use legacy hyprlang dispatch syntax.
+The rule matches Omarchy's `qconsole.lua`: `gaps_in` is zero, the active border
+is disabled, and `on_created_empty` owns lazy launch. It inherits Omarchy's
+global dimming and directional special-workspace animation instead of
+overriding them. When upgrading with an old managed client still open, the
+service moves it to `special:cliamp` and tiles it once so the workspace rule can
+take over.
 
 ## Hide and recover
 
@@ -159,20 +161,22 @@ omarchy plugin remove io.github.ilyazar.cliamp
 omarchy plugin validate .
 bash -n bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh
 shellcheck bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh
-tests/test_geometry.sh
-tests/test_apply_geometry.sh
+tests/test_workspace.sh
+tests/test_apply_workspace.sh
 tests/test_toggle.sh
+tests/test_launch.sh
 tests/test_bindings.sh
 tests/test_keybindings.sh
 tests/test_recovery.sh
 tests/test_teardown.sh
+tests/test_ui.sh
 qmllint -I /usr/share/omarchy/shell Service.qml BarWidget.qml
 ```
 
-The tests cover transformed and scaled monitors, reserved margins, exact
-floating geometry, managed and legacy client selection, launch/show/hide
-behavior, command-based effective binding consumption, ordinary CLIamp
-isolation, guarded teardown, and idempotent icon recovery.
+The tests cover transformed and scaled monitors, reserved margins, workspace
+gaps, all alignments, lazy launch, current-client migration, idempotent rule
+updates, command-based effective binding consumption, ordinary CLIamp
+isolation, guarded teardown, compact Note copy, and icon recovery.
 
 ## Logo license
 
