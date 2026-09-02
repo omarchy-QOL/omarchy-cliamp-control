@@ -337,9 +337,9 @@ Panel {
 
           Text {
             width: parent.width
-            text: "1. Horizontal alignment changes along the x-axis.\n"
-              + "2. The top edge stays below reserved screen areas.\n"
-              + "3. " + root.restoreIconWarning
+            text: "1. Alignment moves the window along the x-axis.\n"
+              + "2. The top edge avoids reserved areas.\n"
+              + "3. Hide shows how to restore the icon."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
