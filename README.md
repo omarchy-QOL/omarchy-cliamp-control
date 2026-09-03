@@ -41,7 +41,7 @@ Install and enable the plugin with Omarchy's native plugin command:
 
 ```bash
 omarchy plugin add \
-  https://github.com/ilyaZar/omarchy-cliamp-control.git --enable
+  https://github.com/omarchy-QOL/omarchy-cliamp-control.git --enable
 ```
 
 No setup hook or user-configuration change is required. Omarchy clones the
