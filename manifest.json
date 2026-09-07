@@ -23,8 +23,7 @@
     "defaults": {
       "alignment": "Center",
       "windowWidth": 1200,
-      "windowHeight": 600,
-      "iconVisible": true
+      "windowHeight": 600
     },
     "schema": [
       {
@@ -55,12 +54,6 @@
         "max": 100000,
         "step": 50,
         "defaultValue": 600
-      },
-      {
-        "key": "iconVisible",
-        "type": "boolean",
-        "label": "Show bar icon",
-        "defaultValue": true
       }
     ]
   }

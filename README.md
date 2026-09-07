@@ -9,8 +9,6 @@ console workspace. Its bar control uses the classic Winamp lightning-bolt logo.
 - Width and height use editable numeric fields with 50 px arrow steps.
 - Existing effective CLIamp bindings toggle the managed special workspace.
 - Ordinary CLIamp windows launched outside those bindings stay ordinary.
-- Hiding the bar icon requires explicit confirmation.
-- Geometry management continues while the bar icon is hidden.
 
 "Center" affects x only. The y coordinate starts at the top of the monitor's
 usable rectangle, below any reserved screen area.
@@ -40,8 +38,7 @@ omarchy plugin add \
 ```
 
 No setup hook or user-configuration change is required. Omarchy clones the
-complete runtime, launcher, recovery helper, and assets into the plugin
-checkout.
+complete runtime, launcher, and assets into the plugin checkout.
 
 For local development, link this checkout into the plugin directory and
 rescan before enabling it:
@@ -53,13 +50,14 @@ omarchy-shell shell rescanPlugins
 omarchy plugin enable io.github.ilyazar.cliamp
 ```
 
+After source edits, run `omarchy restart shell` to reload cached QML.
+
 ## Settings and behavior
 
-Defaults are Center, 1200 px wide, 600 px high, and icon visible. Valid values
-are stored inline on the widget's `shell.json` layout entry through the shell's
+Defaults are Center, 1200 px wide, and 600 px high. Valid values are stored
+inline on the widget's `shell.json` layout entry through the shell's
 supported `updateEntryInline` method. The service reads the host's
-`barConfig.layout` snapshot independently of the widget, including when its
-icon is hidden. The recovery helper uses `omarchy bar` commands.
+`barConfig.layout` snapshot independently of the widget.
 
 The service applies one rule to `special:cliamp`, then refits it when the
 focused monitor, monitor layout, settings, or Hyprland configuration changes.
@@ -122,26 +120,7 @@ is disabled, and `on_created_empty` owns lazy launch. It inherits Omarchy's
 global dimming and directional special-workspace animation instead of
 overriding them.
 
-## Hide and recover
-
-These states are deliberately different:
-
-- **Hide icon** sets `iconVisible` to false. The widget consumes no bar gap and
-  its enabled service keeps running.
-- **Remove bar entry** removes the widget while leaving the installed plugin
-  available.
-- **Remove plugin** removes its checkout and shell registration.
-
-Restore a hidden or removed bar entry with the helper inside the native plugin
-checkout:
-
-```bash
-~/.config/omarchy/plugins/io.github.ilyazar.cliamp/bin/cliamp-widget
-```
-
-The helper rescans plugins, idempotently puts the widget in its default right
-section when absent, and clears `iconVisible`. It also supports `show`, `hide`,
-and `status` subcommands.
+## Remove
 
 Remove the plugin without leaving external setup files behind:
 
@@ -153,10 +132,10 @@ omarchy plugin remove io.github.ilyazar.cliamp
 
 ```bash
 omarchy plugin validate .
-for file in bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh; do
+for file in lib/*.sh scripts/*.sh tests/*.sh *.sh; do
   bash -n "$file" || exit
 done
-shellcheck bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh
+shellcheck lib/*.sh scripts/*.sh tests/*.sh *.sh
 luac -p lib/bindings.lua
 for test in tests/test_*.sh; do
   bash "$test" || exit
@@ -165,16 +144,16 @@ done
 
 The shell tests cover transformed and scaled monitors, reserved margins,
 workspace gaps, lazy launch, idempotent rules, native binding discovery and
-options, ordinary CLIamp isolation, teardown, and icon recovery.
+options, ordinary CLIamp isolation, and teardown.
 
 `tests/test_qml.sh` requires a Wayland session, Quickshell, and Qt 6 development
 tools under `/usr/lib/qt6/bin`. It supplies the host import path to `qmllint`,
 runs pure settings tests with Qt Quick Test, and loads the actual entry points
 and host facades in an isolated Quickshell test process. Helper commands are
 mocked; the tests do not modify desktop rules or persisted settings. They
-exercise configuration updates, overlapping requests, independent error
-recovery, and hidden-icon behavior. Dynamic host properties can still produce
-lint warnings; successful imports alone do not prove runtime behavior.
+exercise configuration updates, overlapping requests, widget persistence, and
+independent error recovery. Dynamic host properties can still produce lint
+warnings; successful imports alone do not prove runtime behavior.
 
 Validated against Omarchy `4.0.0.r2071.ga703092`, Quickshell `0.3.1`,
 Qt `6.11.2`, and Hyprland `0.56.2`. The plugin requires the current facade API;

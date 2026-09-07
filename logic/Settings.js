@@ -11,9 +11,7 @@ function normalize(entry) {
     alignment: ["Left", "Center", "Right"].indexOf(entry.alignment) >= 0
       ? entry.alignment : "Center",
     windowWidth: dimension(entry.windowWidth, 1200),
-    windowHeight: dimension(entry.windowHeight, 600),
-    iconVisible: entry.iconVisible === undefined || entry.iconVisible === null
-      || entry.iconVisible === true
+    windowHeight: dimension(entry.windowHeight, 600)
   }
 }
 

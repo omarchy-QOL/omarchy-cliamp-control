@@ -15,8 +15,6 @@ Panel {
   ipcTarget: ""
 
   property int selectedIndex: 0
-  property bool hideConfirmOpen: false
-  property int hideConfirmIndex: 0
 
   readonly property var geometryService: bar && bar.shell
     ? bar.shell.serviceFor(moduleName) : null
@@ -24,22 +22,16 @@ Panel {
   readonly property string alignment: config.alignment
   readonly property int windowWidth: config.windowWidth
   readonly property int windowHeight: config.windowHeight
-  readonly property bool iconVisible: config.iconVisible
   readonly property color foreground: bar
     ? bar.barForeground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string toggleScript: Paths.localPath(
     Qt.resolvedUrl("scripts/toggle_cliamp.sh"))
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
   readonly property int keybindingIndex: 3
-  readonly property int iconIndex: 4
-  readonly property int settingsCount: 5
-  readonly property string restoreIconWarning:
-    "Run `~/.config/omarchy/plugins/io.github.ilyazar.cliamp/bin/"
-      + "cliamp-widget` to restore the bar icon."
+  readonly property int settingsCount: 4
   readonly property string tooltip: leftAlignedTooltip([
     "CLIamp",
     "Left click:  toggle",
@@ -94,54 +86,25 @@ Panel {
     persistSetting("alignment", nextAlignment())
   }
 
-  function hideIcon() {
-    close()
-    persistSetting("iconVisible", false)
-  }
-
-  function requestHideIcon() {
-    hideConfirmIndex = 0
-    hideConfirmOpen = true
-  }
-
-  function cancelHideIcon() {
-    hideConfirmOpen = false
-    Qt.callLater(function() { keyCatcher.forceActiveFocus() })
-  }
-
-  function confirmHideIcon() {
-    hideConfirmOpen = false
-    hideIcon()
-  }
-
   function activateSelected() {
-    if (hideConfirmOpen) {
-      if (hideConfirmIndex === 0) cancelHideIcon()
-      else confirmHideIcon()
-      return
-    }
     if (selectedIndex === 0) cycleAlignment()
     else if (selectedIndex === 1) widthRow.focusField()
     else if (selectedIndex === 2) heightRow.focusField()
     else if (selectedIndex === keybindingIndex) launchKeybindings()
-    else if (selectedIndex === iconIndex) requestHideIcon()
   }
 
   onOpenedChanged: if (opened) {
     selectedIndex = 0
-    hideConfirmOpen = false
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
-  visible: iconVisible
-  implicitWidth: iconVisible ? button.implicitWidth : 0
-  implicitHeight: iconVisible ? button.implicitHeight : 0
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
 
   BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    active: root.opened
     tooltipText: root.tooltip
     text: ""
     onPressed: function(buttonCode) {
@@ -165,38 +128,20 @@ Panel {
       anchors.fill: parent
       blocked: widthRow.fieldActive || heightRow.fieldActive
       onMoveRequested: function(dx, dy) {
-        if (root.hideConfirmOpen) {
-          if (dx !== 0 || dy !== 0)
-            root.hideConfirmIndex = root.hideConfirmIndex === 0 ? 1 : 0
-          return
-        }
         if (dy !== 0)
           root.selectedIndex = (root.selectedIndex + dy
             + root.settingsCount) % root.settingsCount
         if (dx !== 0 && root.selectedIndex === 0) root.cycleAlignment()
       }
       onActivateRequested: root.activateSelected()
-      onCloseRequested: {
-        if (root.hideConfirmOpen) root.cancelHideIcon()
-        else root.close()
-      }
-      onTabRequested: function(direction) {
-        if (root.hideConfirmOpen)
-          root.hideConfirmIndex = root.hideConfirmIndex === 0 ? 1 : 0
-        else root.switchPanel(direction)
-      }
+      onCloseRequested: root.close()
+      onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(text) {
         var key = String(text).toLowerCase()
-        if (root.hideConfirmOpen) {
-          if (key === "y") root.confirmHideIcon()
-          else if (key === "n") root.cancelHideIcon()
-          return
-        }
         if (key === "a") root.cycleAlignment()
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()
         else if (key === "k") root.launchKeybindings()
-        else if (key === "v") root.requestHideIcon()
       }
 
       Column {
@@ -205,7 +150,6 @@ Panel {
         spacing: Style.space(8)
 
         PanelHero {
-          visible: !root.hideConfirmOpen
           width: parent.width
           title: "CLIamp"
           foreground: root.foreground
@@ -222,7 +166,6 @@ Panel {
         }
 
         MenuRow {
-          visible: !root.hideConfirmOpen
           label: "Horizontal alignment"
           value: root.alignment
           hasCursor: root.selectedIndex === 0
@@ -232,7 +175,6 @@ Panel {
 
         DimensionRow {
           id: widthRow
-          visible: !root.hideConfirmOpen
           label: "Window width"
           hasCursor: root.selectedIndex === 1
           value: root.windowWidth
@@ -244,7 +186,6 @@ Panel {
 
         DimensionRow {
           id: heightRow
-          visible: !root.hideConfirmOpen
           label: "Window height"
           hasCursor: root.selectedIndex === 2
           value: root.windowHeight
@@ -255,7 +196,6 @@ Panel {
         }
 
         MenuRow {
-          visible: !root.hideConfirmOpen
           label: "Launch keybinding"
           value: root.geometryService
             ? root.geometryService.bindingLabel : "..."
@@ -266,21 +206,10 @@ Panel {
           onClicked: root.launchKeybindings()
         }
 
-        MenuRow {
-          visible: !root.hideConfirmOpen
-          label: "Bar icon"
-          value: "Visible"
-          hasCursor: root.selectedIndex === root.iconIndex
-          onHovered: function(on) {
-            if (on) root.selectedIndex = root.iconIndex
-          }
-          onClicked: root.requestHideIcon()
-        }
-
         Text {
-          visible: !root.hideConfirmOpen && (root.clampSummary !== ""
+          visible: root.clampSummary !== ""
             || (root.geometryService
-              && root.geometryService.lastError !== ""))
+              && root.geometryService.lastError !== "")
           width: parent.width
           text: root.geometryService && root.geometryService.lastError !== ""
               ? root.geometryService.lastError : root.clampSummary
@@ -291,7 +220,6 @@ Panel {
         }
 
         Column {
-          visible: !root.hideConfirmOpen
           width: parent.width
           spacing: Style.space(2)
 
@@ -307,54 +235,11 @@ Panel {
           Text {
             width: parent.width
             text: "1. Alignment moves the window along the x-axis.\n"
-              + "2. The top edge avoids reserved areas.\n"
-              + "3. Hide shows how to restore the icon."
+              + "2. The top edge avoids reserved areas."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             wrapMode: Text.WordWrap
-          }
-        }
-
-        Column {
-          visible: root.hideConfirmOpen
-          width: parent.width
-          spacing: Style.space(8)
-
-          PanelSectionHeader {
-            width: parent.width
-            text: "HIDE BAR ICON?"
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-          }
-
-          Text {
-            width: parent.width
-            text: root.restoreIconWarning
-            color: root.urgent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            wrapMode: Text.WordWrap
-          }
-
-          MenuRow {
-            label: "Cancel"
-            value: "Abort"
-            hasCursor: root.hideConfirmIndex === 0
-            onHovered: function(on) {
-              if (on) root.hideConfirmIndex = 0
-            }
-            onClicked: root.cancelHideIcon()
-          }
-
-          MenuRow {
-            label: "Confirm hide"
-            value: "Hide"
-            hasCursor: root.hideConfirmIndex === 1
-            onHovered: function(on) {
-              if (on) root.hideConfirmIndex = 1
-            }
-            onClicked: root.confirmHideIcon()
           }
         }
       }

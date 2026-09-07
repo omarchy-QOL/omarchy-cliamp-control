@@ -28,7 +28,7 @@ ShellRoot {
         })
       host.barConfig = {layout: {right: [{
         id: "io.github.ilyazar.cliamp", alignment: "Right",
-        windowWidth: 850, windowHeight: 425, iconVisible: false
+        windowWidth: 850, windowHeight: 425
       }]}}
       service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml")
       service.shell = host
@@ -46,7 +46,7 @@ ShellRoot {
       service.applyWorkspace()
       service.applyWorkspace()
       host.barConfig = {layout: {left: [{
-        id: "io.github.ilyazar.cliamp", windowWidth: 700, iconVisible: false
+        id: "io.github.ilyazar.cliamp", windowWidth: 700
       }]}}
       compare(service.settings.windowWidth, 700)
       tryVerify(function() {
@@ -73,7 +73,7 @@ ShellRoot {
       compare(service.bindingLabel, "Unbound")
     }
 
-    function test_widgetPersistenceAndHiddenService() {
+    function test_widgetPersistence() {
       var bar = create(Quickshell.env("OMARCHY_PATH")
         + "/shell/Ui/PluginBarApi.qml", {
           pluginId: host.pluginId, moduleName: host.pluginId, shell: host
@@ -87,22 +87,11 @@ ShellRoot {
         widget.settings = entry
         return true
       }
-      compare(widget.implicitWidth, 0)
       compare(widget.geometryService, service)
-      widget.persistSetting("iconVisible", true)
       verify(widget.implicitWidth > 0)
       widget.cycleAlignment()
       compare(service.settings.alignment, "Left")
       widget.persistDimension("windowWidth", 700)
-      compare(service.settings.windowWidth, 700)
-      widget.requestHideIcon()
-      verify(widget.hideConfirmOpen)
-      widget.cancelHideIcon()
-      verify(!widget.hideConfirmOpen && widget.iconVisible)
-      widget.requestHideIcon()
-      widget.confirmHideIcon()
-      compare(widget.implicitWidth, 0)
-      verify(!service.tearingDown)
       compare(service.settings.windowWidth, 700)
       compare(widget.leftAlignedTooltip(["a", "abc"]), "a\u00a0\u00a0\nabc")
       widget.destroy()
