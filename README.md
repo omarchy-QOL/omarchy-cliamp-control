@@ -17,7 +17,7 @@ usable rectangle, below any reserved screen area.
 
 ## Requirements
 
-- Omarchy Quattro with the current `qconsole.lua` presentation
+- Omarchy Quattro with `qconsole.lua` and the `shell.barConfig` plugin API
 - Hyprland 0.55 or newer with the Lua provider
 - `bash`, `jq`, `lua`, and `hyprctl`
 - `cliamp`, which is included in a standard Omarchy installation
@@ -25,15 +25,10 @@ usable rectangle, below any reserved screen area.
 When readable, `~/.local/share/cliamp/thunder.webm` is passed to CLIamp with
 `--auto-play`. Without that optional file, CLIamp launches normally.
 
-The required Quake-console implementation landed after the `v4.0.2` stable
-tag. Until a numbered release includes it, use a Quattro build at or after
-commit `fa955bfa9d2c94339f452e4c56cb5bbfc5e1718e`.
-
 The plugin does not change CLIamp's audio sources or edit Hyprland
 configuration files. Its lazy workspace seed launches the managed app ID
-`org.omarchy.cliamp.quake` through Omarchy's native TUI launcher. The ordinary
-`org.omarchy.cliamp` app ID and older `org.omarchy.quake.music` windows are
-deliberately excluded.
+`org.omarchy.cliamp.quake` through Omarchy's native TUI launcher. Only that app
+ID belongs to this plugin.
 
 ## Install
 
@@ -62,8 +57,9 @@ omarchy plugin enable io.github.ilyazar.cliamp
 
 Defaults are Center, 1200 px wide, 600 px high, and icon visible. Valid values
 are stored inline on the widget's `shell.json` layout entry through the shell's
-supported `updateEntryInline` method. The recovery helper uses `omarchy bar`
-commands instead of editing `shell.json`.
+supported `updateEntryInline` method. The service reads the host's
+`barConfig.layout` snapshot independently of the widget, including when its
+icon is hidden. The recovery helper uses `omarchy bar` commands.
 
 The service applies one rule to `special:cliamp`, then refits it when the
 focused monitor, monitor layout, settings, or Hyprland configuration changes.
@@ -81,11 +77,11 @@ workspace that is seeded again the next time it opens.
 
 Stock Omarchy binds `Super+Shift+Alt+M` to `Music TUI`. The plugin scans the
 effective Lua configuration and recognizes CLIamp by its launch command, so a
-user may change the key or description. It also recognizes the older
-`quake_toggle.sh music` action. Every matching key is rebound in Hyprland's
-running session to the shipped adapter while the plugin is enabled. Supported
-Hyprland binding options, including release behavior and device filters, are
-preserved.
+user may change the key or description. Native bindings using
+`omarchy-launch-tui cliamp` or `omarchy-launch-or-focus-tui cliamp` are rebound
+in Hyprland's running session to the shipped toggle helper while the plugin is
+enabled. Supported Hyprland binding options, including release behavior and
+device filters, are preserved.
 
 The source configuration is never rewritten. Disabling or removing the plugin
 reloads the Hyprland configuration so each original action is restored. A
@@ -124,9 +120,7 @@ top-edge geometry without window move or resize dispatches.
 The rule matches Omarchy's `qconsole.lua`: `gaps_in` is zero, the active border
 is disabled, and `on_created_empty` owns lazy launch. It inherits Omarchy's
 global dimming and directional special-workspace animation instead of
-overriding them. When upgrading with an old managed client still open, the
-service moves it to `special:cliamp` and tiles it once so the workspace rule can
-take over.
+overriding them.
 
 ## Hide and recover
 
@@ -159,24 +153,32 @@ omarchy plugin remove io.github.ilyazar.cliamp
 
 ```bash
 omarchy plugin validate .
-bash -n bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh
+for file in bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh; do
+  bash -n "$file" || exit
+done
 shellcheck bin/cliamp-widget lib/*.sh scripts/*.sh tests/*.sh *.sh
-tests/test_workspace.sh
-tests/test_apply_workspace.sh
-tests/test_toggle.sh
-tests/test_launch.sh
-tests/test_bindings.sh
-tests/test_keybindings.sh
-tests/test_recovery.sh
-tests/test_teardown.sh
-tests/test_ui.sh
-qmllint -I /usr/share/omarchy/shell Service.qml BarWidget.qml
+luac -p lib/bindings.lua
+for test in tests/test_*.sh; do
+  bash "$test" || exit
+done
 ```
 
-The tests cover transformed and scaled monitors, reserved margins, workspace
-gaps, all alignments, lazy launch, current-client migration, idempotent rule
-updates, command-based effective binding consumption, ordinary CLIamp
-isolation, guarded teardown, compact Note copy, and icon recovery.
+The shell tests cover transformed and scaled monitors, reserved margins,
+workspace gaps, lazy launch, idempotent rules, native binding discovery and
+options, ordinary CLIamp isolation, teardown, and icon recovery.
+
+`tests/test_qml.sh` requires a Wayland session, Quickshell, and Qt 6 development
+tools under `/usr/lib/qt6/bin`. It supplies the host import path to `qmllint`,
+runs pure settings tests with Qt Quick Test, and loads the actual entry points
+and host facades in an isolated Quickshell test process. Helper commands are
+mocked; the tests do not modify desktop rules or persisted settings. They
+exercise configuration updates, overlapping requests, independent error
+recovery, and hidden-icon behavior. Dynamic host properties can still produce
+lint warnings; successful imports alone do not prove runtime behavior.
+
+Validated against Omarchy `4.0.0.r2071.ga703092`, Quickshell `0.3.1`,
+Qt `6.11.2`, and Hyprland `0.56.2`. The plugin requires the current facade API;
+unsupported hosts need updating.
 
 ## Logo license
 

@@ -1,8 +1,12 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons
 import qs.Ui
+import "logic/Settings.js" as Settings
+import "logic/Paths.js" as Paths
 
 Panel {
   id: root
@@ -16,21 +20,19 @@ Panel {
 
   readonly property var geometryService: bar && bar.shell
     ? bar.shell.serviceFor(moduleName) : null
-  readonly property string alignment: validAlignment(
-    setting("alignment", "Center"))
-  readonly property int windowWidth: intSetting(
-    "windowWidth", 1200)
-  readonly property int windowHeight: intSetting(
-    "windowHeight", 600)
-  readonly property bool iconVisible: setting("iconVisible", true) === true
+  readonly property var config: Settings.normalize(root.settings)
+  readonly property string alignment: config.alignment
+  readonly property int windowWidth: config.windowWidth
+  readonly property int windowHeight: config.windowHeight
+  readonly property bool iconVisible: config.iconVisible
   readonly property color foreground: bar
     ? bar.barForeground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property string toggleScript: localPath(
+  readonly property string toggleScript: Paths.localPath(
     Qt.resolvedUrl("scripts/toggle_cliamp.sh"))
-  readonly property string keybindingsScript: localPath(
+  readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
   readonly property int keybindingIndex: 3
   readonly property int iconIndex: 4
@@ -52,37 +54,13 @@ Panel {
       + " inside " + result.monitor.name
   }
 
-  function validAlignment(value) {
-    var text = String(value || "")
-    return ["Left", "Center", "Right"].indexOf(text) >= 0
-      ? text : "Center"
-  }
-
   function leftAlignedTooltip(lines) {
-    var width = 0
-    var padded = []
-    for (var i = 0; i < lines.length; i++)
-      width = Math.max(width, String(lines[i]).length)
-    for (var j = 0; j < lines.length; j++) {
-      var line = String(lines[j])
-      var missing = width - line.length
-      while (missing-- > 0) line += "\u00a0"
-      padded.push(line)
-    }
-    return padded.join("\n")
-  }
-
-  function intSetting(name, fallback) {
-    var value = Number(setting(name, fallback))
-    if (!isFinite(value) || value < 1 || value > 100000
-        || Math.floor(value) !== value) return fallback
-    return value
-  }
-
-  function localPath(url) {
-    var value = String(url || "")
-    if (value.indexOf("file://") === 0) value = value.substring(7)
-    return decodeURIComponent(value)
+    var width = Math.max.apply(null, lines.map(function(line) {
+      return line.length
+    }))
+    return lines.map(function(line) {
+      return line.padEnd(width, "\u00a0")
+    }).join("\n")
   }
 
   function nextAlignment() {
@@ -94,15 +72,8 @@ Panel {
     var entry = { id: moduleName }
     for (var key in settings) if (key !== "id") entry[key] = settings[key]
     entry[name] = value
-    settings = entry
-    if (bar && bar.shell
-        && typeof bar.shell.updateEntryInline === "function")
-      bar.shell.updateEntryInline(moduleName, entry)
-  }
-
-  function syncService() {
-    if (geometryService && typeof geometryService.configure === "function")
-      geometryService.configure(alignment, windowWidth, windowHeight)
+    if (!root.bar.shell.updateEntryInline(root.moduleName, entry))
+      console.warn("CLIamp settings could not be saved")
   }
 
   function persistDimension(name, value) {
@@ -156,8 +127,6 @@ Panel {
     else if (selectedIndex === iconIndex) requestHideIcon()
   }
 
-  onSettingsChanged: syncService()
-  onGeometryServiceChanged: syncService()
   onOpenedChanged: if (opened) {
     selectedIndex = 0
     hideConfirmOpen = false
@@ -489,6 +458,4 @@ Panel {
       onHoveredChanged: dimension.hovered(hovered)
     }
   }
-
-  Component.onCompleted: Qt.callLater(syncService)
 }

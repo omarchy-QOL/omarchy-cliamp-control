@@ -2,35 +2,28 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import "logic/Settings.js" as Settings
+import "logic/Paths.js" as Paths
 
 Item {
   id: root
 
   property QtObject shell: null
-  property string alignment: "Center"
-  property int windowWidth: 1200
-  property int windowHeight: 600
-  property string lastStatus: "starting"
-  property string lastError: ""
   property var lastGeometry: null
-  property string lastRuleSignature: ""
-  property bool migrationPending: true
-  property bool rerunPending: false
-  property string processOutput: ""
-  property string processError: ""
+  property string workspaceError: ""
+  property string bindingsError: ""
   property string bindingLabel: "..."
-  property string bindingOutput: ""
-  property string bindingError: ""
+  property bool rerunPending: false
   property bool bindingRerunPending: false
   property bool tearingDown: false
 
   readonly property string pluginId: "io.github.ilyazar.cliamp"
   readonly property string managedClass: "org.omarchy.cliamp.quake"
-  readonly property string pluginDir: localPath(Qt.resolvedUrl("."))
-  readonly property string applyScript: localPath(
-    Qt.resolvedUrl("scripts/apply_workspace.sh"))
-  readonly property string bindingScript: localPath(
-    Qt.resolvedUrl("scripts/sync_bindings.sh"))
+  readonly property string pluginDir: Paths.localPath(Qt.resolvedUrl("."))
+  readonly property string lastError: [workspaceError, bindingsError]
+    .filter(function(error) { return error !== "" }).join("\n")
+  readonly property var settings: Settings.normalize(
+    shell ? Settings.findEntry(shell.barConfig, pluginId) : {})
   readonly property string teardownCommand: [
     "plugin_dir=\"$1\"",
     "plugin_id=\"$2\"",
@@ -80,69 +73,8 @@ Item {
     "hyprctl reload config-only >/dev/null 2>&1 || true"
   ].join("\n")
 
-  function localPath(url) {
-    var value = String(url || "")
-    if (value.indexOf("file://") === 0) value = value.substring(7)
-    return decodeURIComponent(value)
-  }
-
-  function positiveInteger(value, fallback) {
-    var parsed = Number(value)
-    if (!isFinite(parsed) || parsed < 1 || parsed > 100000
-        || Math.floor(parsed) !== parsed) return fallback
-    return parsed
-  }
-
-  function validAlignment(value) {
-    var text = String(value || "")
-    return ["Left", "Center", "Right"].indexOf(text) >= 0
-      ? text : "Center"
-  }
-
-  function configuredEntry() {
-    var config = shell ? shell.shellConfig : null
-    var layout = config && config.bar ? config.bar.layout : null
-    var sections = ["left", "center", "right"]
-    for (var s = 0; layout && s < sections.length; s++) {
-      var entries = layout[sections[s]]
-      if (!Array.isArray(entries)) continue
-      for (var i = 0; i < entries.length; i++) {
-        var entry = entries[i]
-        if (entry && String(entry.id || entry) === pluginId)
-          return typeof entry === "object" ? entry : { id: entry }
-      }
-    }
-    return null
-  }
-
-  function refreshSettingsFromShell() {
-    var entry = configuredEntry()
-    if (!entry) return
-    configure(
-      validAlignment(entry.alignment),
-      positiveInteger(entry.windowWidth, 1200),
-      positiveInteger(entry.windowHeight, 600)
-    )
-  }
-
-  function configure(nextAlignment, nextWidth, nextHeight) {
-    var normalizedAlignment = validAlignment(nextAlignment)
-    var normalizedWidth = positiveInteger(nextWidth, 1200)
-    var normalizedHeight = positiveInteger(nextHeight, 600)
-    var changed = alignment !== normalizedAlignment
-      || windowWidth !== normalizedWidth
-      || windowHeight !== normalizedHeight
-
-    alignment = normalizedAlignment
-    windowWidth = normalizedWidth
-    windowHeight = normalizedHeight
-    if (changed || lastStatus === "starting") scheduleApply(30)
-  }
-
-  function scheduleApply(delayMs) {
-    if (tearingDown) return
-    applyTimer.interval = Math.max(20, Number(delayMs || 120))
-    applyTimer.restart()
+  function scheduleApply() {
+    if (shell && !tearingDown) applyTimer.restart()
   }
 
   function applyWorkspace() {
@@ -151,16 +83,10 @@ Item {
       rerunPending = true
       return
     }
-    processOutput = ""
-    processError = ""
     applyProcess.command = [
-      "bash",
-      applyScript,
-      alignment,
-      String(windowWidth),
-      String(windowHeight),
-      lastRuleSignature,
-      String(migrationPending)
+      "bash", pluginDir + "scripts/apply_workspace.sh",
+      settings.alignment, String(settings.windowWidth),
+      String(settings.windowHeight)
     ]
     applyProcess.running = true
   }
@@ -171,93 +97,54 @@ Item {
       bindingRerunPending = true
       return
     }
-    bindingOutput = ""
-    bindingError = ""
-    bindingProcess.command = ["bash", bindingScript]
     bindingProcess.running = true
   }
 
-  function acceptBindingResult(exitCode) {
+  function acceptBindingResult(exitCode, output, errorOutput) {
     if (tearingDown) return
-    var parsed = null
     try {
-      parsed = JSON.parse(String(bindingOutput || "").trim())
+      if (exitCode !== 0)
+        throw new Error(errorOutput.trim() || "CLIamp binding sync failed")
+      var labels = JSON.parse(output)
+      if (!Array.isArray(labels) || !labels.every(function(label) {
+        return typeof label === "string"
+      })) throw new Error("Invalid CLIamp binding result")
+      bindingLabel = labels.length ? labels.join(" / ") : "Unbound"
+      bindingsError = ""
     } catch (error) {
-      parsed = null
+      bindingLabel = "Unavailable"
+      bindingsError = error.message
     }
-
-    if (exitCode === 0 && parsed) {
-      var labels = []
-      var bindings = Array.isArray(parsed.bindings) ? parsed.bindings : []
-      for (var index = 0; index < bindings.length; index++) {
-        var label = String(bindings[index].label || "")
-        if (label !== "") labels.push(label)
-      }
-      bindingLabel = labels.length > 0 ? labels.join(" / ") : "Unbound"
-    } else {
-      bindingLabel = "Unbound"
-      lastError = String(bindingError || "").trim()
-        || "CLIamp binding adapter failed"
-    }
-
     if (bindingRerunPending) {
       bindingRerunPending = false
       bindingTimer.restart()
     }
   }
 
-  function acceptResult(exitCode) {
+  function acceptResult(exitCode, output, errorOutput) {
     if (tearingDown) return
-    var parsed = null
-    var raw = String(processOutput || "").trim()
-    if (raw !== "") {
-      try {
-        parsed = JSON.parse(raw)
-      } catch (error) {
-        parsed = null
-      }
+    try {
+      if (exitCode !== 0)
+        throw new Error(errorOutput.trim() || "Workspace rule helper failed")
+      var result = JSON.parse(output)
+      if (!result || ["applied", "unchanged"].indexOf(result.status) < 0)
+        throw new Error("Invalid workspace rule result")
+      lastGeometry = result
+      workspaceError = ""
+    } catch (error) {
+      workspaceError = error.message
     }
-
-    if (exitCode === 0 && parsed) {
-      lastGeometry = parsed
-      lastStatus = String(parsed.status || "error")
-      lastRuleSignature = String(parsed.signature || "")
-      migrationPending = false
-      if (parsed.clientCount !== null && parsed.clientCount !== undefined)
-        lastError = parsed.clientCount > 1
-          ? "More than one CLIamp client exists" : ""
-    } else {
-      lastStatus = "error"
-      lastError = String(processError || "").trim()
-        || "Workspace rule helper failed with exit " + exitCode
-    }
-
     if (rerunPending) {
       rerunPending = false
-      scheduleApply(30)
+      scheduleApply()
     }
-  }
-
-  function eventName(event) {
-    return String(event && event.name ? event.name : "").toLowerCase()
   }
 
   function handleHyprlandEvent(event) {
     if (tearingDown) return
-    var name = eventName(event)
-    var layoutEvents = [
-      "focusedmon",
-      "monitoradded",
-      "monitoraddedv2",
-      "monitorremoved",
-      "monitorremovedv2"
-    ]
-    if (layoutEvents.indexOf(name) >= 0) scheduleApply(120)
-    if (name === "configreloaded") {
-      lastRuleSignature = ""
-      scheduleApply(120)
-      bindingTimer.restart()
-    }
+    if (["focusedmon", "monitoraddedv2", "monitorremovedv2",
+         "configreloaded"].indexOf(event.name) >= 0) scheduleApply()
+    if (event.name === "configreloaded") bindingTimer.restart()
   }
 
   function teardown() {
@@ -285,18 +172,10 @@ Item {
     ])
   }
 
-  onShellChanged: refreshSettingsFromShell()
-
-  Connections {
-    target: root.shell
-    ignoreUnknownSignals: true
-    function onShellConfigChanged() { root.refreshSettingsFromShell() }
-  }
+  onSettingsChanged: scheduleApply()
 
   Connections {
     target: Hyprland
-    ignoreUnknownSignals: true
-    function onFocusedMonitorChanged() { root.scheduleApply(30) }
     function onRawEvent(event) { root.handleHyprlandEvent(event) }
   }
 
@@ -314,44 +193,33 @@ Item {
 
   Timer {
     interval: 5000
-    running: !root.tearingDown
+    running: root.shell !== null && !root.tearingDown
     repeat: true
-    onTriggered: root.scheduleApply(30)
+    onTriggered: root.scheduleApply()
   }
 
   Process {
     id: applyProcess
-
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.processOutput = text
+    stdout: StdioCollector { id: applyOutput; waitForEnd: true }
+    stderr: StdioCollector { id: applyError; waitForEnd: true }
+    onExited: function(exitCode) {
+      root.acceptResult(exitCode, applyOutput.text, applyError.text)
     }
-    stderr: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.processError = text
-    }
-    onExited: function(exitCode) { root.acceptResult(exitCode) }
   }
 
   Process {
     id: bindingProcess
-
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.bindingOutput = text
+    command: ["bash", root.pluginDir + "scripts/sync_bindings.sh"]
+    stdout: StdioCollector { id: bindingOutput; waitForEnd: true }
+    stderr: StdioCollector { id: bindingError; waitForEnd: true }
+    onExited: function(exitCode) {
+      root.acceptBindingResult(exitCode, bindingOutput.text, bindingError.text)
     }
-    stderr: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.bindingError = text
-    }
-    onExited: function(exitCode) { root.acceptBindingResult(exitCode) }
   }
 
   Component.onCompleted: Qt.callLater(function() {
-    root.refreshSettingsFromShell()
-    root.scheduleApply(30)
+    root.scheduleApply()
     root.syncBindings()
   })
-
   Component.onDestruction: root.teardown()
 }
