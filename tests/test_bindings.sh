@@ -13,6 +13,9 @@ mkdir -p "$TEMP_ROOT/bin"
 
 cat >"$CLIAMP_HYPR_CONFIG" <<'LUA'
 require("default.hypr.helpers")
+local rules = {}
+table.insert(rules, hl.workspace_rule({ workspace = "1" }))
+rules[1]:set_enabled(true)
 local options = {
   mouse = true, release = true, locked = true, non_consuming = true,
   device = { inclusive = true, list = { "kbd one", 'quote"and\\slash' } },
@@ -27,6 +30,7 @@ hl.unbind("F11")
 o.bind("F11", "Player", { tui = "cliamp" },
   { repeating = false, dont_inhibit = true })
 o.bind("SUPER + A", "Browser", { omarchy = "browser" })
+o.bind("SUPER + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 o.bind("SUPER + H", "Help", "cliamp --help")
 o.bind("SUPER + K", "Stop", "pkill cliamp")
 o.bind("SUPER + O", "Other", "omarchy-launch-tui cliamp-other")

@@ -13,6 +13,12 @@ noop = setmetatable({}, {
   __call = function() return noop end,
 })
 
+local dispatcher
+dispatcher = setmetatable({}, {
+  __index = function() return dispatcher end,
+  __call = function() return function() end end,
+})
+
 local function options_lua(options)
   local fields = {
     "description = " .. string.format("%q", options.description or "CLIamp"),
@@ -46,7 +52,7 @@ end
 
 hl = setmetatable({
   dsp = setmetatable({ exec_cmd = function(command) return command end }, {
-    __index = function() return noop end,
+    __index = function() return dispatcher end,
   }),
   bind = remember,
   unbind = function(keys) bindings[keys] = nil end,
