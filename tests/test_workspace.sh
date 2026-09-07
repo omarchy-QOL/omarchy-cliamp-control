@@ -162,12 +162,6 @@ assert_json "$right_monitor" '
   .monitor.name == "RIGHT"
   and .actual == {x: 2595, y: -160, width: 1200, height: 600}
 ' 'focus changes refit the workspace rule'
-if [[ $(jq -r '.signature' <<<"$left_monitor") == \
-  "$(jq -r '.signature' <<<"$right_monitor")" ]]; then
-  printf 'monitor focus change did not update the rule signature\n' >&2
-  exit 1
-fi
-
 fallback="$(cliamp_workspace_json '[]' Center 1200 600)"
 assert_json "$fallback" '
   .status == "fallback"
@@ -195,6 +189,6 @@ live_result="$(cliamp_workspace_json "$live_size" Right 850 425)"
 assert_json "$live_result" '
   .actual == {x: 2150, y: 26, width: 850, height: 425}
   and .gaps == {top: 0, right: 0, bottom: 749, left: 1070}
-' 'persisted 850 by 425 settings need no migration'
+' 'custom dimensions use the available workspace gaps'
 
 printf 'ok - qconsole workspace geometry cases\n'

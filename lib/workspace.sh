@@ -37,8 +37,7 @@ cliamp_workspace_json() {
             usable: null,
             requested: $requested,
             actual: null,
-            gaps: {top: 0, right: 0, bottom: 0, left: 0},
-            signature: ([0, 0, 0, 0] | @json)
+            gaps: {top: 0, right: 0, bottom: 0, left: 0}
           }
         else
           ($monitor.scale | number_or(1)) as $scale
@@ -116,8 +115,7 @@ cliamp_workspace_json() {
                 right: $right,
                 bottom: $bottom,
                 left: $left
-              },
-              signature: ([0, $right, $bottom, $left] | @json)
+              }
             }
         end
     '

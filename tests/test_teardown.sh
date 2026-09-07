@@ -173,7 +173,7 @@ assert_disabled_closes_only_managed_clients() {
     {"address":"0xbbb","class":"changed",
       "initialClass":"org.omarchy.cliamp.quake"},
     {"address":"0xccc","class":"org.omarchy.cliamp"},
-    {"address":"0xddd","class":"org.omarchy.quake.music"},
+    {"address":"0xddd","class":"org.example.player"},
     {"address":"invalid","class":"org.omarchy.cliamp.quake"}
   ]' >"$CLIENTS_FILE"
 
