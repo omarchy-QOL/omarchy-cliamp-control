@@ -7,116 +7,93 @@ TEMP_ROOT="$(mktemp -d)"
 readonly TEST_DIR TEMP_ROOT
 trap 'rm -rf -- "$TEMP_ROOT"' EXIT
 
-readonly MOCK_BIN="$TEMP_ROOT/bin"
-readonly CONFIG_FILE="$TEMP_ROOT/hyprland.lua"
+export CLIAMP_HYPR_CONFIG="$TEMP_ROOT/hyprland.lua"
 export CLIAMP_TEST_EXPRESSION="$TEMP_ROOT/expression"
+mkdir -p "$TEMP_ROOT/bin"
 
-mkdir -p "$MOCK_BIN"
-
-cat >"$CONFIG_FILE" <<'LUA'
+cat >"$CLIAMP_HYPR_CONFIG" <<'LUA'
 require("default.hypr.helpers")
-local monitor = hl.get_active_monitor()
-if monitor and monitor.scale and monitor.scale <= 0 then
-  error("invalid active monitor")
-end
-o.bind(
-  "SUPER + SHIFT + ALT + M",
-  "My renamed player",
-  { tui = "cliamp", focus = true },
-  {
-    mouse = true,
-    release = true,
-    locked = true,
-    non_consuming = true,
-    device = { inclusive = true, list = { "kbd one", "kbd-two" } },
-  }
-)
-hl.bind(
-  "F12",
-  hl.dsp.exec_cmd("~/.config/hypr/scripts/quake_toggle.sh music"),
-  { description = "Old music drop-down" }
-)
+local options = {
+  mouse = true, release = true, locked = true, non_consuming = true,
+  device = { inclusive = true, list = { "kbd one", 'quote"and\\slash' } },
+}
+o.bind("SUPER + SHIFT + ALT + M", 'My "player"',
+  { tui = "cliamp", focus = true }, options)
+options.release = false
+hl.bind("F12", hl.dsp.exec_cmd("omarchy-launch-tui cliamp"))
 hl.unbind("F12")
-hl.bind(
-  "F11",
-  hl.dsp.exec_cmd("~/.config/hypr/scripts/quake_toggle.sh music"),
-  {
-    description = "Moved music drop-down",
-    repeating = false,
-    dont_inhibit = true,
-  }
-)
-hl.bind(
-  "SUPER + A",
-  hl.dsp.exec_cmd("omarchy-launch-browser"),
-  { description = "Unrelated" }
-)
-hl.bind(
-  "SUPER + H",
-  hl.dsp.exec_cmd("cliamp --help"),
-  { description = "CLIamp help" }
-)
-hl.bind(
-  "SUPER + K",
-  hl.dsp.exec_cmd("pkill cliamp"),
-  { description = "Stop CLIamp" }
-)
+hl.bind("F11", hl.dsp.exec_cmd("omarchy-launch-tui cliamp"))
+hl.unbind("F11")
+o.bind("F11", "Player", { tui = "cliamp" },
+  { repeating = false, dont_inhibit = true })
+o.bind("SUPER + A", "Browser", { omarchy = "browser" })
+o.bind("SUPER + H", "Help", "cliamp --help")
+o.bind("SUPER + K", "Stop", "pkill cliamp")
+o.bind("SUPER + O", "Other", "omarchy-launch-tui cliamp-other")
+o.bind("SUPER + E", "Example", "echo omarchy-launch-tui cliamp")
 LUA
 
-cat >"$MOCK_BIN/hyprctl" <<'MOCK'
+cat >"$TEMP_ROOT/bin/hyprctl" <<'MOCK'
 #!/bin/bash
 set -euo pipefail
-
-[[ ${1:-} == "eval" ]]
-printf '%s\n' "${2:-}" >"$CLIAMP_TEST_EXPRESSION"
+[[ ${1:-} == eval ]]
+printf '%s\n' "$2" >"$CLIAMP_TEST_EXPRESSION"
 MOCK
-chmod 0755 "$MOCK_BIN/hyprctl"
+chmod +x "$TEMP_ROOT/bin/hyprctl"
+export PATH="$TEMP_ROOT/bin:$PATH"
 
-result="$(
-  CLIAMP_HYPR_CONFIG="$CONFIG_FILE" \
-    PATH="$MOCK_BIN:$PATH" \
-    "$TEST_DIR/../scripts/sync_bindings.sh"
-)"
+result="$("$TEST_DIR/../scripts/sync_bindings.sh")"
+jq -e '. == ["F11", "SUPER+SHIFT+ALT+M"]' >/dev/null <<<"$result"
 
-jq -e '
-  .status == "managed"
-  and (.bindings | length) == 2
-  and .bindings[0].keys == "F11"
-  and .bindings[1].keys == "SUPER + SHIFT + ALT + M"
-  and .bindings[1].description == "My renamed player"
-  and .bindings[1].options.mouse == true
-  and .bindings[0].options.repeating == false
-  and .bindings[0].options.dont_inhibit == true
-  and .bindings[1].options.release == true
-  and .bindings[1].options.locked == true
-  and .bindings[1].options.non_consuming == true
-  and .bindings[1].options.device == {
-    inclusive: true,
-    list: ["kbd one", "kbd-two"]
-  }
-' >/dev/null <<<"$result"
+lua - "$CLIAMP_TEST_EXPRESSION" <<'LUA'
+local seen, removed = {}, {}
+hl = {
+  dsp = { exec_cmd = function(command) return command end },
+  unbind = function(keys) removed[keys] = true end,
+  bind = function(keys, command, opts)
+    assert(not seen[keys], "binding emitted twice")
+    assert(removed[keys], "original action was not removed")
+    assert(command:match("^bash '.*scripts/toggle_cliamp%.sh'$"))
+    seen[keys] = opts
+  end,
+}
+dofile(arg[1])
+assert(seen.F11.repeating == false and seen.F11.dont_inhibit)
+local opts = assert(seen["SUPER + SHIFT + ALT + M"])
+assert(opts.description == 'My "player"')
+assert(opts.mouse and opts.release and opts.locked and opts.non_consuming)
+assert(opts.device.inclusive)
+assert(opts.device.list[1] == "kbd one")
+assert(opts.device.list[2] == 'quote"and\\slash')
+assert(not seen.F12 and not seen["SUPER + H"] and not seen["SUPER + K"])
+LUA
 
-grep -Fq 'hl.unbind("F11")' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'hl.unbind("SUPER + SHIFT + ALT + M")' \
-  "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'scripts/toggle_cliamp.sh' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'mouse = true' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'repeating = false' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'dont_inhibit = true' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'release = true' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'locked = true' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq 'non_consuming = true' "$CLIAMP_TEST_EXPRESSION"
-grep -Fq \
-  'device = { inclusive = true, list = { "kbd one", "kbd-two" } }' \
-  "$CLIAMP_TEST_EXPRESSION"
-if grep -Fq 'hl.unbind("F12")' "$CLIAMP_TEST_EXPRESSION"; then
-  printf 'removed binding was incorrectly restored\n' >&2
+toggle="$TEMP_ROOT/player's copy.sh"
+printf 'printf quoted-path-ok' >"$toggle"
+lua "$TEST_DIR/../lib/bindings.lua" "$CLIAMP_HYPR_CONFIG" "$toggle" \
+  | jq -r '.expression' >"$CLIAMP_TEST_EXPRESSION"
+lua - "$CLIAMP_TEST_EXPRESSION" <<'LUA'
+hl = {
+  dsp = { exec_cmd = function(command) return command end },
+  unbind = function() end,
+  bind = function(_, command)
+    local pipe = assert(io.popen(command))
+    assert(pipe:read("a") == "quoted-path-ok")
+    assert(pipe:close())
+  end,
+}
+dofile(arg[1])
+LUA
+
+: >"$CLIAMP_HYPR_CONFIG"
+rm "$CLIAMP_TEST_EXPRESSION"
+[[ $("$TEST_DIR/../scripts/sync_bindings.sh") == '[]' ]]
+[[ ! -e $CLIAMP_TEST_EXPRESSION ]]
+printf 'error("broken config")\n' >"$CLIAMP_HYPR_CONFIG"
+if "$TEST_DIR/../scripts/sync_bindings.sh" 2>"$TEMP_ROOT/error"; then
+  printf 'invalid configuration was accepted\n' >&2
   exit 1
 fi
-if grep -Eq 'hl\.unbind\("SUPER \+ (H|K)"\)' \
-  "$CLIAMP_TEST_EXPRESSION"; then
-  printf 'non-launch CLIamp binding was incorrectly consumed\n' >&2
-  exit 1
-fi
-
-printf 'ok - effective CLIamp bindings are consumed by command\n'
+grep -Fq 'CLIamp binding scan failed:' "$TEMP_ROOT/error"
+[[ ! -e $CLIAMP_TEST_EXPRESSION ]]
+printf 'ok - native CLIamp bindings and options\n'
