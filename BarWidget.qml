@@ -303,6 +303,7 @@ Panel {
         font.pixelSize: Style.font.body
         font.bold: row.hasCursor
         Layout.fillWidth: true
+        Layout.minimumWidth: implicitWidth
         Layout.alignment: Qt.AlignVCenter
       }
 

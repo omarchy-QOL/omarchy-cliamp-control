@@ -214,6 +214,8 @@ Item {
     function onRawEvent(event) {
       if (event.name === "custom") root.acceptGeometry(event.data)
       else if (event.name === "configreloaded") root.install()
+      else if (["focusedmon", "activespecialv2", "openlayer", "closelayer"]
+          .indexOf(event.name) >= 0 && root.ready) root.dispatch("apply", [])
     }
   }
 
