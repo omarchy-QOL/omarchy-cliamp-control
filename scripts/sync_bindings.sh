@@ -7,7 +7,7 @@ readonly SCRIPT_DIR
 readonly CONFIG_FILE="${CLIAMP_HYPR_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua}"
 
 result="$(lua "$SCRIPT_DIR/../lib/bindings.lua" "$CONFIG_FILE" \
-  "$SCRIPT_DIR/toggle_cliamp.sh")"
+  "$SCRIPT_DIR/../lib/client.lua")"
 expression="$(jq -r '.expression' <<<"$result")"
 if [[ -n $expression ]]; then
   hyprctl eval "$expression" >/dev/null

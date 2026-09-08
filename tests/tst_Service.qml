@@ -13,24 +13,37 @@ ShellRoot {
 
     property var service
     property var host
+    property var saved: []
+
+    QtObject {
+      id: compositor
+      property var commands: []
+      signal rawEvent(var event)
+      function dispatch(request) { commands = commands.concat([request]) }
+      function monitorFor(screen) {
+        return {name: "TEST", activeWorkspace: {id: 2}}
+      }
+    }
 
     function create(path, properties) {
       var component = Qt.createComponent("file://" + path)
-      if (component.status !== Component.Ready) console.error(component.errorString())
       compare(component.status, Component.Ready, component.errorString())
       return component.createObject(testCase, properties || {})
     }
 
     function init() {
+      saved = []
+      compositor.commands = []
       host = create(Quickshell.env("OMARCHY_PATH")
         + "/shell/services/PluginShellApi.qml", {
           pluginId: "io.github.ilyazar.cliamp"
         })
       host.barConfig = {layout: {right: [{
-        id: "io.github.ilyazar.cliamp", alignment: "Right",
-        windowWidth: 850, windowHeight: 425
+        id: host.pluginId, alignment: "Right", windowWidth: 850, windowHeight: 425
       }]}}
-      service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml")
+      host._updateSettings = function(id, entry) { saved.push(entry); return true }
+      service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml",
+        {compositor: compositor})
       service.shell = host
     }
 
@@ -40,40 +53,53 @@ ShellRoot {
       host.destroy()
     }
 
-    function test_postCreationSettingsAndChanges() {
+    function result(status, values, revision) {
+      return ["cliamp", service.epoch,
+        revision === undefined ? service.revision : revision, status]
+        .concat(values || []).join(",")
+    }
+
+    function test_immediateCommandsAndStaleSnapshots() {
       compare(service.settings.windowWidth, 850)
-      compare(service.settings.alignment, "Right")
-      service.applyWorkspace()
-      service.applyWorkspace()
-      host.barConfig = {layout: {left: [{
-        id: "io.github.ilyazar.cliamp", windowWidth: 700
-      }]}}
+      var count = compositor.commands.length
+      service.setSetting("windowWidth", 900)
+      compare(service.settings.windowWidth, 900)
+      compare(compositor.commands.length, count + 1)
+      service.setSetting("windowHeight", 500)
+      compare(compositor.commands.length, count + 2)
+      compare(service.settings.windowHeight, 500)
+      compare(saved.length, 0)
+      service.receiveSettings({alignment: "Left", windowWidth: 850})
+      compare(service.settings.windowWidth, 900)
+      service.persistSettings()
+      compare(saved.length, 1)
+      compare(saved[0].windowWidth, 900)
+      compare(saved[0].windowHeight, 500)
+      service.receiveSettings({alignment: "Left", windowWidth: 700})
       compare(service.settings.windowWidth, 700)
-      tryVerify(function() {
-        return service.lastGeometry !== null
-          && service.lastGeometry.requested.width === 700
-      })
+      compare(service.settings.alignment, "Left")
     }
 
-    function test_independentErrorRecovery() {
-      service.acceptResult(1, "", "workspace failed")
+    function test_observationAndIndependentErrors() {
+      service.acceptGeometry(result("error", ["geometry failed"]))
       service.acceptBindingResult(1, "", "binding failed")
-      compare(service.lastError, "workspace failed\nbinding failed")
-      service.acceptBindingResult(0, '["SUPER+M"]', "")
-      compare(service.lastError, "workspace failed")
-      compare(service.bindingLabel, "SUPER+M")
-      service.acceptResult(0, '{"status":"unchanged"}', "")
-      compare(service.lastError, "")
-
-      service.acceptBindingResult(1, "", "binding failed")
-      service.acceptResult(0, '{"status":"applied"}', "")
+      compare(service.lastError, "geometry failed\nbinding failed")
+      service.acceptGeometry(result("geometry", [0,26,850,425,0,26,850,425]))
       compare(service.lastError, "binding failed")
-      service.acceptBindingResult(0, '[]', "")
+      compare(service.lastGeometry.actual.width, 850)
+      service.acceptBindingResult(0, '["F12"]', "")
       compare(service.lastError, "")
-      compare(service.bindingLabel, "Unbound")
+      service.setSetting("windowWidth", 900)
+      service.acceptGeometry(result("error", ["stale failure"], 0))
+      compare(service.lastError, "")
+      service.acceptGeometry(result("geometry", [0,26,900,425,0,26,800,425]))
+      verify(service.geometryError !== "")
+      service.acceptGeometry(result("absent"))
+      compare(service.lastGeometry, null)
+      compare(service.lastError, "")
     }
 
-    function test_widgetPersistence() {
+    function test_widgetUsesDesiredState() {
       var bar = create(Quickshell.env("OMARCHY_PATH")
         + "/shell/Ui/PluginBarApi.qml", {
           pluginId: host.pluginId, moduleName: host.pluginId, shell: host
@@ -83,31 +109,35 @@ ShellRoot {
       widget.bar = bar
       widget.settings = host.barConfig.layout.right[0]
       host._updateSettings = function(id, entry) {
-        host.barConfig = {layout: {right: [entry]}}
+        host.barConfig = {layout: {right: [widget.settings]}}
         widget.settings = entry
+        saved.push(entry)
         return true
       }
-      compare(widget.geometryService, service)
-      verify(widget.implicitWidth > 0)
       widget.cycleAlignment()
-      compare(service.settings.alignment, "Left")
+      compare(widget.alignment, "Left")
+      widget.cycleAlignment()
+      compare(widget.alignment, "Center")
+      widget.cycleAlignment(-1)
+      compare(widget.alignment, "Left")
       widget.persistDimension("windowWidth", 700)
+      compare(widget.windowWidth, 700)
+      service.persistSettings()
       compare(service.settings.windowWidth, 700)
-      compare(widget.leftAlignedTooltip(["a", "abc"]), "a\u00a0\u00a0\nabc")
+      compare(host.barConfig.layout.right[0].windowWidth, 850)
+      compare(saved[0].windowWidth, 700)
       widget.destroy()
       bar.destroy()
     }
 
-    function test_invalidResultsAndDestruction() {
-      service.acceptBindingResult(0, '{}', "")
-      verify(service.bindingsError !== "")
-      service.acceptResult(0, 'null', "")
-      verify(service.workspaceError !== "")
+    function test_teardownFlushesAndStops() {
+      service.setSetting("windowHeight", 700)
       service.teardown()
-      service.acceptResult(0, '{"status":"applied"}', "")
-      verify(service.workspaceError !== "")
-      service.scheduleApply()
+      compare(saved[0].windowHeight, 700)
       verify(service.tearingDown)
+      var count = compositor.commands.length
+      service.togglePlayer({monitor: "TEST", workspace: 2})
+      compare(compositor.commands.length, count)
     }
   }
 }

@@ -1,5 +1,5 @@
 -- Evaluate source bindings because Hyprland exposes opaque dispatcher IDs.
-local config, toggle = assert(arg[1]), assert(arg[2])
+local config, controller = assert(arg[1]), assert(arg[2])
 local bindings = {}
 local boolean_options = {
   "mouse", "repeating", "locked", "release", "non_consuming", "transparent",
@@ -94,10 +94,10 @@ end
 table.sort(keys)
 
 local expressions, labels = {}, {}
-local command = "bash '" .. toggle:gsub("'", "'\\''") .. "'"
+local command = string.format("function() dofile(%q).toggle() end", controller)
 for _, key in ipairs(keys) do
   expressions[#expressions + 1] = string.format(
-    "hl.unbind(%q); hl.bind(%q, hl.dsp.exec_cmd(%q), %s)",
+    "hl.unbind(%q); hl.bind(%q, %s, %s)",
     key, key, command, bindings[key].options
   )
   labels[#labels + 1] = json_string(key:gsub("%s*%+%s*", "+"))

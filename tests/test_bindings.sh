@@ -52,12 +52,11 @@ jq -e '. == ["F11", "SUPER+SHIFT+ALT+M"]' >/dev/null <<<"$result"
 lua - "$CLIAMP_TEST_EXPRESSION" <<'LUA'
 local seen, removed = {}, {}
 hl = {
-  dsp = { exec_cmd = function(command) return command end },
   unbind = function(keys) removed[keys] = true end,
   bind = function(keys, command, opts)
     assert(not seen[keys], "binding emitted twice")
     assert(removed[keys], "original action was not removed")
-    assert(command:match("^bash '.*scripts/toggle_cliamp%.sh'$"))
+    assert(type(command) == "function")
     seen[keys] = opts
   end,
 }
@@ -72,18 +71,17 @@ assert(opts.device.list[2] == 'quote"and\\slash')
 assert(not seen.F12 and not seen["SUPER + H"] and not seen["SUPER + K"])
 LUA
 
-toggle="$TEMP_ROOT/player's copy.sh"
-printf 'printf quoted-path-ok' >"$toggle"
-lua "$TEST_DIR/../lib/bindings.lua" "$CLIAMP_HYPR_CONFIG" "$toggle" \
+controller="$TEMP_ROOT/player's control.lua"
+printf 'return {toggle = function() _G.toggled = true end}' >"$controller"
+lua "$TEST_DIR/../lib/bindings.lua" "$CLIAMP_HYPR_CONFIG" "$controller" \
   | jq -r '.expression' >"$CLIAMP_TEST_EXPRESSION"
 lua - "$CLIAMP_TEST_EXPRESSION" <<'LUA'
 hl = {
-  dsp = { exec_cmd = function(command) return command end },
   unbind = function() end,
-  bind = function(_, command)
-    local pipe = assert(io.popen(command))
-    assert(pipe:read("a") == "quoted-path-ok")
-    assert(pipe:close())
+  bind = function(_, callback)
+    _G.toggled = false
+    callback()
+    assert(_G.toggled)
   end,
 }
 dofile(arg[1])

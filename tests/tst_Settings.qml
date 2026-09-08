@@ -2,6 +2,7 @@ import QtQuick
 import QtTest
 import "../logic/Settings.js" as Settings
 import "../logic/Paths.js" as Paths
+import "../logic/Commands.js" as Commands
 
 TestCase {
   name: "Settings"
@@ -28,6 +29,10 @@ TestCase {
       compare(Settings.findEntry({layout: layout}, "cliamp"), entry)
     }
     compare(Settings.findEntry({}, "cliamp"), {})
+  }
+
+  function test_luaQuoting() {
+    compare(Commands.quote('a"b\\c\n'), '"a\\034b\\092c\\010"')
   }
 
   function test_fileUrl() {

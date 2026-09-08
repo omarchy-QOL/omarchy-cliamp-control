@@ -145,7 +145,7 @@ assert_restart_keeps_client() {
 
   run_teardown
 
-  [[ $(grep -Fc 'hyprctl reload config-only' "$CALLS_FILE") -eq 1 ]]
+  assert_call_absent 'hyprctl reload'
   grep -Fq 'omarchy plugin list --json' "$CALLS_FILE"
   assert_call_absent 'hyprctl clients -j'
   assert_call_absent 'hyprctl dispatch'
@@ -161,7 +161,7 @@ assert_unknown_state_keeps_client() {
     run_teardown 1 2
 
     [[ $(grep -Fc 'omarchy plugin list --json' "$CALLS_FILE") -eq 2 ]]
-    [[ $(grep -Fc 'hyprctl reload config-only' "$CALLS_FILE") -eq 1 ]]
+    assert_call_absent 'hyprctl reload'
     assert_call_absent 'hyprctl clients -j'
   done
 }
@@ -185,7 +185,7 @@ assert_disabled_closes_only_managed_clients() {
   assert_call_absent 'address:0xccc'
   assert_call_absent 'address:0xddd'
   assert_call_absent 'address:invalid'
-  [[ $(head -n 1 "$CALLS_FILE") == 'hyprctl reload config-only' ]]
+  [[ $(head -n 1 "$CALLS_FILE") == 'omarchy plugin list --json' ]]
   [[ $(tail -n 1 "$CALLS_FILE") == 'hyprctl reload config-only' ]]
 }
 

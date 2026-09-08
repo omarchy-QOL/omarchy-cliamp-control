@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
 import "logic/Settings.js" as Settings
@@ -15,10 +16,12 @@ Panel {
   ipcTarget: ""
 
   property int selectedIndex: 0
+  property var pressContext: null
 
   readonly property var geometryService: bar && bar.shell
     ? bar.shell.serviceFor(moduleName) : null
-  readonly property var config: Settings.normalize(root.settings)
+  readonly property var config: geometryService
+    ? geometryService.settings : Settings.normalize(root.settings)
   readonly property string alignment: config.alignment
   readonly property int windowWidth: config.windowWidth
   readonly property int windowHeight: config.windowHeight
@@ -26,8 +29,6 @@ Panel {
     ? bar.barForeground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property string toggleScript: Paths.localPath(
-    Qt.resolvedUrl("scripts/toggle_cliamp.sh"))
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
   readonly property int keybindingIndex: 3
@@ -43,7 +44,7 @@ Panel {
     if (result.actual.width === result.requested.width
         && result.actual.height === result.requested.height) return ""
     return "Clamped to " + result.actual.width + "x" + result.actual.height
-      + " inside " + result.monitor.name
+
   }
 
   function leftAlignedTooltip(lines) {
@@ -55,26 +56,25 @@ Panel {
     }).join("\n")
   }
 
-  function nextAlignment() {
+  function nextAlignment(direction) {
     var values = ["Left", "Center", "Right"]
-    return values[(values.indexOf(alignment) + 1) % values.length]
+    return values[(values.indexOf(alignment) + (direction || 1)
+      + values.length) % values.length]
   }
 
-  function persistSetting(name, value) {
-    var entry = { id: moduleName }
-    for (var key in settings) if (key !== "id") entry[key] = settings[key]
-    entry[name] = value
-    if (!root.bar.shell.updateEntryInline(root.moduleName, entry))
-      console.warn("CLIamp settings could not be saved")
+  function receiveSettings() {
+    if (geometryService) geometryService.receiveSettings(settings)
   }
+
+  function commitFields() { keyCatcher.forceActiveFocus() }
 
   function persistDimension(name, value) {
-    persistSetting(name, Math.max(1, Math.min(100000, Number(value))))
+    if (geometryService) geometryService.setSetting(name, value)
   }
 
-  function launchCliamp() {
+  function launchCliamp(context) {
     close()
-    Quickshell.execDetached(["bash", toggleScript])
+    if (geometryService) geometryService.togglePlayer(context)
   }
 
   function launchKeybindings() {
@@ -82,8 +82,10 @@ Panel {
     Quickshell.execDetached(["bash", keybindingsScript])
   }
 
-  function cycleAlignment() {
-    persistSetting("alignment", nextAlignment())
+  function cycleAlignment(direction) {
+    commitFields()
+    if (geometryService)
+      geometryService.setSetting("alignment", nextAlignment(direction))
   }
 
   function activateSelected() {
@@ -91,6 +93,17 @@ Panel {
     else if (selectedIndex === 1) widthRow.focusField()
     else if (selectedIndex === 2) heightRow.focusField()
     else if (selectedIndex === keybindingIndex) launchKeybindings()
+  }
+
+  onSettingsChanged: receiveSettings()
+  onGeometryServiceChanged: Qt.callLater(receiveSettings)
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (["workspacev2", "focusedmon"].indexOf(event.name) >= 0)
+        root.close()
+    }
   }
 
   onOpenedChanged: if (opened) {
@@ -107,8 +120,17 @@ Panel {
     bar: root.bar
     tooltipText: root.tooltip
     text: ""
+    TapHandler {
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
+      onPressedChanged: if (pressed && root.geometryService)
+        root.pressContext = root.geometryService.contextFor(
+          button.QsWindow.window.screen)
+    }
     onPressed: function(buttonCode) {
-      if (buttonCode === Qt.LeftButton) root.launchCliamp()
+      var context = root.pressContext || (root.geometryService
+        ? root.geometryService.contextFor(button.QsWindow.window.screen) : null)
+      root.pressContext = null
+      if (buttonCode === Qt.LeftButton) root.launchCliamp(context)
       else if (buttonCode === Qt.RightButton) root.toggle()
     }
   }
@@ -131,7 +153,7 @@ Panel {
         if (dy !== 0)
           root.selectedIndex = (root.selectedIndex + dy
             + root.settingsCount) % root.settingsCount
-        if (dx !== 0 && root.selectedIndex === 0) root.cycleAlignment()
+        if (dx !== 0 && root.selectedIndex === 0) root.cycleAlignment(dx)
       }
       onActivateRequested: root.activateSelected()
       onCloseRequested: root.close()
@@ -142,6 +164,14 @@ Panel {
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()
         else if (key === "k") root.launchKeybindings()
+      }
+
+      TapHandler {
+        onTapped: function(point) {
+          if (!widthRow.containsField(keyCatcher, point.position)
+              && !heightRow.containsField(keyCatcher, point.position))
+            root.commitFields()
+        }
       }
 
       Column {
@@ -175,6 +205,7 @@ Panel {
 
         DimensionRow {
           id: widthRow
+          objectName: "widthRow"
           label: "Window width"
           hasCursor: root.selectedIndex === 1
           value: root.windowWidth
@@ -186,6 +217,7 @@ Panel {
 
         DimensionRow {
           id: heightRow
+          objectName: "heightRow"
           label: "Window height"
           hasCursor: root.selectedIndex === 2
           value: root.windowHeight
@@ -280,6 +312,8 @@ Panel {
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         Layout.alignment: Qt.AlignVCenter
+        Layout.maximumWidth: row.width * 0.52
+        elide: Text.ElideRight
       }
     }
 
@@ -303,6 +337,10 @@ Panel {
     signal hovered(bool isHovered)
 
     function focusField() { numberField.field.forceActiveFocus() }
+    function containsField(item, point) {
+      return numberField.field.contains(numberField.field.mapFromItem(
+        item, point.x, point.y))
+    }
 
     width: parent ? parent.width : implicitWidth
     implicitHeight: Style.space(48)
@@ -325,6 +363,8 @@ Panel {
 
       NumberField {
         id: numberField
+        objectName: "numberField"
+        Component.onCompleted: field.live = false
         Layout.preferredWidth: fieldWidth
         Layout.alignment: Qt.AlignVCenter
         fieldWidth: Style.space(128)

@@ -4,26 +4,31 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import "logic/Settings.js" as Settings
 import "logic/Paths.js" as Paths
+import "logic/Commands.js" as Commands
 
 Item {
   id: root
 
   property QtObject shell: null
+  property QtObject compositor: Hyprland
+  property var settings: Settings.normalize({})
   property var lastGeometry: null
-  property string workspaceError: ""
+  property string geometryError: ""
   property string bindingsError: ""
   property string bindingLabel: "..."
-  property bool rerunPending: false
   property bool bindingRerunPending: false
+  property bool persistPending: false
+  property bool persisting: false
   property bool tearingDown: false
+  property bool ready: false
+  property int revision: 0
 
   readonly property string pluginId: "io.github.ilyazar.cliamp"
   readonly property string managedClass: "org.omarchy.cliamp.quake"
   readonly property string pluginDir: Paths.localPath(Qt.resolvedUrl("."))
-  readonly property string lastError: [workspaceError, bindingsError]
+  readonly property string epoch: Date.now() + "-" + Math.random()
+  readonly property string lastError: [geometryError, bindingsError]
     .filter(function(error) { return error !== "" }).join("\n")
-  readonly property var settings: Settings.normalize(
-    shell ? Settings.findEntry(shell.barConfig, pluginId) : {})
   readonly property string teardownCommand: [
     "plugin_dir=\"$1\"",
     "plugin_id=\"$2\"",
@@ -34,7 +39,6 @@ Item {
     "poll_interval=\"$5\"",
     "enabled_attempts=\"$6\"",
     "enabled_interval=\"$7\"",
-    "hyprctl reload config-only >/dev/null 2>&1 || true",
     "sleep \"$enabled_interval\"",
     "plugin_state=\"absent\"",
     "if [[ -e $plugin_dir ]]; then",
@@ -57,6 +61,7 @@ Item {
     "  done",
     "  [[ $plugin_state == \"unknown\" && -e $plugin_dir ]] && exit 0",
     "fi",
+    "hyprctl reload config-only >/dev/null 2>&1 || true",
     "for ((attempt = 0; attempt < poll_attempts; attempt++)); do",
     "  clients_json=\"$(hyprctl clients -j 2>/dev/null || printf '[]')\"",
     "  while IFS= read -r address; do",
@@ -73,31 +78,98 @@ Item {
     "hyprctl reload config-only >/dev/null 2>&1 || true"
   ].join("\n")
 
-  function scheduleApply() {
-    if (shell && !tearingDown) applyTimer.restart()
+
+  function dispatch(method, args) {
+    if (!tearingDown)
+      compositor.dispatch(Commands.call(pluginDir + "lib/client.lua", method, args))
   }
 
-  function applyWorkspace() {
+  function geometryArgs() {
+    return [epoch, revision, settings.alignment,
+      settings.windowWidth, settings.windowHeight]
+  }
+
+  function receiveSettings(entry) {
+    if (persistPending || persisting || tearingDown) return
+    var next = Settings.normalize(entry)
+    if (JSON.stringify(next) === JSON.stringify(settings)) return
+    settings = next
+    revision++
+    if (ready) dispatch("configure", geometryArgs())
+  }
+
+  function setSetting(name, value) {
+    var next = Object.assign({}, settings)
+    next[name] = value
+    next = Settings.normalize(next)
+    if (JSON.stringify(next) === JSON.stringify(settings)) return
+    settings = next
+    revision++
+    if (ready) dispatch("configure", geometryArgs())
+    persistPending = true
+    Qt.callLater(persistSettings)
+  }
+
+  function persistSettings() {
+    if (!persistPending || !shell) return
+    persistPending = false
+    persisting = true
+    shell.updateEntryInline(pluginId, Object.assign({id: pluginId}, settings))
+    persisting = false
+  }
+
+  function install() {
+    if (!shell || tearingDown) return
+    var args = geometryArgs()
+    args.splice(1, 0, pluginDir + "scripts/launch_cliamp.sh")
+    dispatch("install", args)
+    ready = true
+    syncBindings()
+  }
+
+  function contextFor(screen) {
+    var monitor = compositor.monitorFor(screen)
+    return monitor && monitor.activeWorkspace
+      ? {monitor: monitor.name, workspace: monitor.activeWorkspace.id} : null
+  }
+
+  function togglePlayer(context) {
+    if (ready && context) dispatch("toggle", [context.monitor, context.workspace])
+  }
+
+  function acceptGeometry(data) {
     if (tearingDown) return
-    if (applyProcess.running) {
-      rerunPending = true
+    var fields = data.split(",")
+    if (fields[0] !== "cliamp" || fields[1] !== epoch
+        || Number(fields[2]) !== revision) return
+    if (fields[3] === "error") {
+      geometryError = fields.slice(4).join(",")
       return
     }
-    applyProcess.command = [
-      "bash", pluginDir + "scripts/apply_workspace.sh",
-      settings.alignment, String(settings.windowWidth),
-      String(settings.windowHeight)
-    ]
-    applyProcess.running = true
+    geometryError = ""
+    if (fields[3] === "absent") {
+      lastGeometry = null
+      return
+    }
+    var values = fields.slice(4).map(Number)
+    if (fields[3] !== "geometry" || values.length !== 8
+        || !values.every(Number.isFinite)) {
+      geometryError = "Invalid CLIamp geometry result"
+      return
+    }
+    lastGeometry = {
+      requested: {width: settings.windowWidth, height: settings.windowHeight},
+      actual: {x: values[4], y: values[5], width: values[6], height: values[7]}
+    }
+    if (values.slice(0, 4).some(function(value, index) {
+      return value !== values[index + 4]
+    })) geometryError = "Hyprland did not accept the requested geometry"
   }
 
   function syncBindings() {
     if (tearingDown) return
-    if (bindingProcess.running) {
-      bindingRerunPending = true
-      return
-    }
-    bindingProcess.running = true
+    if (bindingProcess.running) bindingRerunPending = true
+    else bindingProcess.running = true
   }
 
   function acceptBindingResult(exitCode, output, errorOutput) {
@@ -117,93 +189,30 @@ Item {
     }
     if (bindingRerunPending) {
       bindingRerunPending = false
-      bindingTimer.restart()
+      Qt.callLater(syncBindings)
     }
-  }
-
-  function acceptResult(exitCode, output, errorOutput) {
-    if (tearingDown) return
-    try {
-      if (exitCode !== 0)
-        throw new Error(errorOutput.trim() || "Workspace rule helper failed")
-      var result = JSON.parse(output)
-      if (!result || ["applied", "unchanged"].indexOf(result.status) < 0)
-        throw new Error("Invalid workspace rule result")
-      lastGeometry = result
-      workspaceError = ""
-    } catch (error) {
-      workspaceError = error.message
-    }
-    if (rerunPending) {
-      rerunPending = false
-      scheduleApply()
-    }
-  }
-
-  function handleHyprlandEvent(event) {
-    if (tearingDown) return
-    if (["focusedmon", "monitoraddedv2", "monitorremovedv2",
-         "configreloaded"].indexOf(event.name) >= 0) scheduleApply()
-    if (event.name === "configreloaded") bindingTimer.restart()
   }
 
   function teardown() {
     if (tearingDown) return
+    persistSettings()
+    dispatch("stop", [epoch])
     tearingDown = true
-    applyTimer.stop()
-    bindingTimer.stop()
-    rerunPending = false
-    bindingRerunPending = false
-    if (applyProcess.running) applyProcess.running = false
     if (bindingProcess.running) bindingProcess.running = false
-
-    Quickshell.execDetached([
-      "bash",
-      "-c",
-      teardownCommand,
-      "cliamp-teardown",
-      pluginDir,
-      pluginId,
-      managedClass,
-      "100",
-      "0.05",
-      "10",
-      "0.1"
-    ])
+    Quickshell.execDetached(["bash", "-c", teardownCommand, "cliamp-teardown",
+      pluginDir, pluginId, managedClass, "100", "0.05", "10", "0.1"])
   }
 
-  onSettingsChanged: scheduleApply()
+  onShellChanged: if (shell) {
+    receiveSettings(Settings.findEntry(shell.barConfig, pluginId))
+    install()
+  }
 
   Connections {
-    target: Hyprland
-    function onRawEvent(event) { root.handleHyprlandEvent(event) }
-  }
-
-  Timer {
-    id: applyTimer
-    interval: 120
-    onTriggered: root.applyWorkspace()
-  }
-
-  Timer {
-    id: bindingTimer
-    interval: 250
-    onTriggered: root.syncBindings()
-  }
-
-  Timer {
-    interval: 5000
-    running: root.shell !== null && !root.tearingDown
-    repeat: true
-    onTriggered: root.scheduleApply()
-  }
-
-  Process {
-    id: applyProcess
-    stdout: StdioCollector { id: applyOutput; waitForEnd: true }
-    stderr: StdioCollector { id: applyError; waitForEnd: true }
-    onExited: function(exitCode) {
-      root.acceptResult(exitCode, applyOutput.text, applyError.text)
+    target: root.compositor
+    function onRawEvent(event) {
+      if (event.name === "custom") root.acceptGeometry(event.data)
+      else if (event.name === "configreloaded") root.install()
     }
   }
 
@@ -217,9 +226,5 @@ Item {
     }
   }
 
-  Component.onCompleted: Qt.callLater(function() {
-    root.scheduleApply()
-    root.syncBindings()
-  })
   Component.onDestruction: root.teardown()
 }

@@ -15,12 +15,6 @@ cat >"$TEMP_ROOT/bin/bash" <<'MOCK'
 #!/bin/bash
 set -euo pipefail
 case "$1" in
-  */apply_workspace.sh)
-    sleep 0.05
-    jq -cn --argjson width "$3" '{
-      status: "applied", requested: {width: $width}
-    }'
-    ;;
   */sync_bindings.sh) printf '["SUPER+M"]\n' ;;
   -c) exit 0 ;;
   *) exit 1 ;;
