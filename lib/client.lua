@@ -45,15 +45,17 @@ local function fit()
       if floated then
         hl.dispatch(hl.dsp.window.float({window = target, action = "on"}))
       end
-      if floated or window.size.x ~= width or window.size.y ~= height
-          or window.at.x ~= x or window.at.y ~= y then
-        -- A resize can adjust the floating box before cached properties refresh.
+      for attempt = 1, 2 do
+        if not floated and window.size.x == width and window.size.y == height
+            and window.at.x == x and window.at.y == y then break end
+        -- Hyprland can round the first floating-box adjustment by one pixel.
         hl.dispatch(hl.dsp.window.resize({window = target,
           x = width, y = height, relative = false}))
         hl.dispatch(hl.dsp.window.move({window = target,
           x = x, y = y, relative = false}))
+        hl.exec_scheduled_prop_refresh_immediately()
+        floated = false
       end
-      hl.exec_scheduled_prop_refresh_immediately()
       report("geometry", x, y, width, height,
         window.at.x, window.at.y, window.size.x, window.size.y)
     end
@@ -106,9 +108,8 @@ function M.install(epoch, launcher, revision, alignment, width, height)
       hl.dispatch(hl.dsp.focus({window = "address:" .. window.address}))
     end
   end)
-  for _, event in ipairs({"config.props_refreshed", "monitor.layout_changed",
-      "workspace.special_active", "workspace.move_to_monitor",
-      "window.move_to_workspace"}) do
+  for _, event in ipairs({"monitor.layout_changed", "workspace.special_active",
+      "workspace.move_to_monitor", "window.move_to_workspace"}) do
     state.listeners[#state.listeners + 1] = hl.on(event, M.apply)
   end
   M.configure(epoch, revision, alignment, width, height)

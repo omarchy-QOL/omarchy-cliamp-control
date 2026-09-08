@@ -7,16 +7,13 @@ local player = {class = "org.omarchy.cliamp.quake", mapped = true,
   address = "0xabc", monitor = monitor, floating = false,
   at = {x = 0, y = 0}, size = {x = 100, y = 100}, workspace = special}
 local ordinary = {class = "org.omarchy.cliamp", mapped = true}
+local first_resize = true
 local windows, actions, events, listeners, launches = {ordinary, player}, {}, {}, {}, {}
 local function action(kind, args) return {kind = kind, args = args} end
 hl = {
   get_active_monitor = function() return monitor end,
   get_windows = function() return windows end,
-  exec_scheduled_prop_refresh_immediately = function()
-    if listeners["config.props_refreshed"] then
-      listeners["config.props_refreshed"]()
-    end
-  end,
+  exec_scheduled_prop_refresh_immediately = function() end,
   workspace_rule = function() return {set_enabled = function() end} end,
   window_rule = function() return {set_enabled = function() end} end,
   on = function(event, callback)
@@ -48,7 +45,8 @@ hl = {
       player.floating = true
       player.size = {x = 1200, y = 600}
     elseif a.kind == "resize" then
-      player.size = {x = a.args.x, y = a.args.y}
+      player.size = {x = a.args.x, y = a.args.y + (first_resize and 1 or 0)}
+      first_resize = false
     elseif a.kind == "move" then
       player.at = {x = a.args.x, y = a.args.y}
     end
@@ -60,10 +58,10 @@ assert(player.floating and player.at.x == 1080 and player.at.y == 26)
 assert(player.size.x == 850 and player.size.y == 425)
 assert(ordinary.floating == nil)
 player.size.y = 426
-listeners["config.props_refreshed"]()
-assert(player.size.y == 425, "a late client size adjustment must be corrected")
+client.apply()
+assert(player.size.y == 425, "an observed size adjustment must be corrected")
 local event_count = #events
-listeners["config.props_refreshed"]()
+client.apply()
 assert(#events == event_count, "unchanged observations must not flood the shell")
 local count = #actions
 client.configure("test", 1, "Left", 850, 425)
