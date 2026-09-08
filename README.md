@@ -3,7 +3,7 @@
 A Quake-style drop-down for CLIamp. Open it from the bar or your music shortcut,
 then choose its size and horizontal position.
 
-![CLIamp drop-down and window controls](preview.png)
+[![CLIamp drop-down and window controls](preview.png)][demo]
 
 [Watch the demo][demo] — changing alignment, resizing, and showing or hiding the
 player. The key and mouse overlay in the video is a separate tool.
@@ -51,11 +51,9 @@ shortcuts. Your CLIamp configuration stays unchanged.
 
 ## License
 
-MIT-licensed code. The Winamp logo has [separate credits and terms][assets].
-This plugin is unofficial and is not affiliated with Winamp.
+MIT.
 
 [Development and checks](docs/development.md).
 
 [demo]:
   https://omarchy-qol.github.io/omarchy-cliamp-control/assets/published/cliamp-quake.mp4
-[assets]: assets/README.md

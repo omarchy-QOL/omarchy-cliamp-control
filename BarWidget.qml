@@ -185,12 +185,11 @@ Panel {
           foreground: root.foreground
           fontFamily: root.fontFamily
           iconComponent: Component {
-            Image {
-              width: Style.font.display
-              height: width
-              source: Qt.resolvedUrl("assets/winamp-logo.svg")
-              fillMode: Image.PreserveAspectFit
-              smooth: true
+            Text {
+              text: button.text
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.display
             }
           }
         }
