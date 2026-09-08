@@ -42,11 +42,11 @@ local function fit()
       if floated then
         hl.dispatch(hl.dsp.window.float({window = target, action = "on"}))
       end
-      if floated or window.size.x ~= width or window.size.y ~= height then
+      if floated or window.size.x ~= width or window.size.y ~= height
+          or window.at.x ~= x or window.at.y ~= y then
+        -- A resize can adjust the floating box before cached properties refresh.
         hl.dispatch(hl.dsp.window.resize({window = target,
           x = width, y = height, relative = false}))
-      end
-      if floated or window.at.x ~= x or window.at.y ~= y then
         hl.dispatch(hl.dsp.window.move({window = target,
           x = x, y = y, relative = false}))
       end
