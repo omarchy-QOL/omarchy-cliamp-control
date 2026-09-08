@@ -91,6 +91,9 @@ Item {
 
   function receiveSettings(entry) {
     if (persistPending || persisting || tearingDown) return
+    if (!entry || (entry.alignment === undefined
+        && entry.windowWidth === undefined && entry.windowHeight === undefined))
+      return
     var next = Settings.normalize(entry)
     if (JSON.stringify(next) === JSON.stringify(settings)) return
     settings = next
