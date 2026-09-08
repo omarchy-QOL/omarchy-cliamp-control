@@ -1,21 +1,18 @@
 {
   "schemaVersion": 1,
   "id": "io.github.ilyazar.cliamp",
-  "name": "CLIamp Window Control",
-  "version": "0.1.5",
+  "name": "CLIamp quake",
+  "version": "0.1.6",
   "author": "ilyaZar",
   "license": "MIT",
-  "description": "Adds a binding-scoped CLIamp drop-down with configurable top-edge geometry and compact bar controls.",
-  "kinds": [
-    "service",
-    "bar-widget"
-  ],
+  "description": "Quake-style CLIamp: TUI in a hyprland window drop-down, that's it. Low-resource, lean and minimalist code, just a dropdown instead of floating hyprland window for running CLIamp. Configurable top-edge geometry (width/height), otherwise very compact bar controls.",
+  "kinds": ["service", "bar-widget"],
   "entryPoints": {
     "service": "Service.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "CLIamp Window Control",
+    "displayName": "CLIamp quake",
     "description": "Toggle stock CLIamp and set its alignment and size.",
     "category": "System",
     "allowMultiple": false,
@@ -30,11 +27,7 @@
         "key": "alignment",
         "type": "enum",
         "label": "Horizontal alignment",
-        "options": [
-          "Left",
-          "Center",
-          "Right"
-        ],
+        "options": ["Left", "Center", "Right"],
         "defaultValue": "Center"
       },
       {
