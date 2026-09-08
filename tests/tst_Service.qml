@@ -12,8 +12,25 @@ ShellRoot {
     }
 
     property var service
-    property var host
     property var saved: []
+
+    QtObject {
+      id: host
+      readonly property string pluginId: "io.github.ilyazar.cliamp"
+      property var barConfig: ({})
+      property var _updateSettings: null
+      function updateEntryInline(id, entry) { return _updateSettings(id, entry) }
+      function serviceFor(id) { return testCase.service }
+    }
+
+    Component {
+      id: barFixture
+      QtObject {
+        property QtObject shell: host
+        property color barForeground: "white"
+        property string fontFamily: "monospace"
+      }
+    }
 
     QtObject {
       id: compositor
@@ -27,6 +44,7 @@ ShellRoot {
 
     function create(path, properties) {
       var component = Qt.createComponent("file://" + path)
+      if (component.status !== Component.Ready) console.error(component.errorString())
       compare(component.status, Component.Ready, component.errorString())
       return component.createObject(testCase, properties || {})
     }
@@ -34,10 +52,6 @@ ShellRoot {
     function init() {
       saved = []
       compositor.commands = []
-      host = create(Quickshell.env("OMARCHY_PATH")
-        + "/shell/services/PluginShellApi.qml", {
-          pluginId: "io.github.ilyazar.cliamp"
-        })
       host.barConfig = {layout: {right: [{
         id: host.pluginId, alignment: "Right", windowWidth: 850, windowHeight: 425
       }]}}
@@ -50,7 +64,6 @@ ShellRoot {
     function cleanup() {
       if (qtest_results.failed) console.error("Failed:", qtest_results.functionName)
       service.destroy()
-      host.destroy()
     }
 
     function result(status, values, revision) {
@@ -100,11 +113,7 @@ ShellRoot {
     }
 
     function test_widgetUsesDesiredState() {
-      var bar = create(Quickshell.env("OMARCHY_PATH")
-        + "/shell/Ui/PluginBarApi.qml", {
-          pluginId: host.pluginId, moduleName: host.pluginId, shell: host
-        })
-      host._serviceLookup = function(id) { return service }
+      var bar = barFixture.createObject(testCase)
       var widget = create(Quickshell.env("CLIAMP_SOURCE") + "/BarWidget.qml")
       widget.bar = bar
       widget.settings = host.barConfig.layout.right[0]

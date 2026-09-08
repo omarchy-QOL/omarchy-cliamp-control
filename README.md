@@ -142,7 +142,7 @@ options, ordinary CLIamp isolation, and teardown.
 `tests/test_qml.sh` requires a Wayland session, Quickshell, and Qt 6 development
 tools under `/usr/lib/qt6/bin`. It supplies the host import path to `qmllint`,
 runs pure settings tests with Qt Quick Test, and loads the actual entry points
-and host facades in an isolated Quickshell test process. Compositor commands and
+with mocked host interfaces in an isolated Quickshell test process. Commands and
 binding helpers are mocked; the tests do not modify desktop rules or persisted
 settings. They exercise immediate updates, stale host snapshots, widget
 persistence, observed geometry, and independent error recovery. Dynamic host
