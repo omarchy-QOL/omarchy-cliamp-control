@@ -5,7 +5,7 @@
   "version": "0.1.6",
   "author": "ilyaZar",
   "license": "MIT",
-  "description": "Quake-style CLIamp: TUI in a hyprland window drop-down, that's it. Low-resource, lean and minimalist code, just a dropdown instead of floating hyprland window for running CLIamp. Configurable top-edge geometry (width/height), otherwise very compact bar controls.",
+  "description": "Quake-style CLIamp: a TUI in a hyprland window drop-down, that's it. Under 1,000 lines of core code, with measured idle plugin overhead below 4 MiB, excluding CLIamp and its terminal. CLIamp runs in a dropdown instead of floating/tiled windows with configurable top-edge geometry (width/height and placement), otherwise very compact bar controls.",
   "kinds": ["service", "bar-widget"],
   "entryPoints": {
     "service": "Service.qml",

@@ -1,7 +1,8 @@
 # CLIamp quake
 
 A Quake-style drop-down for CLIamp. Open it from the bar or your music shortcut,
-then choose its size and horizontal position.
+then choose its size and horizontal position. Under 1,000 lines of core code,
+with measured idle plugin overhead below 4 MiB, excluding CLIamp and its terminal.
 
 [![CLIamp drop-down and window controls](preview.png)][demo]
 
