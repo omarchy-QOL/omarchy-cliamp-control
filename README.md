@@ -1,19 +1,19 @@
 # CLIamp quake
 
-A Quake-style drop-down for CLIamp. Open it from the bar or your music
-shortcut, then choose its size and horizontal position.
+A Quake-style drop-down for CLIamp. Open it from the bar or your music shortcut,
+then choose its size and horizontal position.
 
 ![CLIamp drop-down and window controls](preview.png)
 
-[Watch the demo][demo] — changing alignment, resizing, and showing or hiding
-the player. The key and mouse overlay in the video is a separate tool.
+[Watch the demo][demo] — changing alignment, resizing, and showing or hiding the
+player. The key and mouse overlay in the video is a separate tool.
 
 ## Use
 
 - **Left-click** the lightning bolt to show or hide CLIamp.
 - **Right-click** to set Left, Center, or Right alignment and adjust its size.
-- Size arrows resize immediately in 50 px steps. Typed values apply on
-  **Enter** or when you click elsewhere in the panel.
+- Size arrows resize immediately in 50 px steps. Typed values apply on **Enter**
+  or when you click elsewhere in the panel.
 - Select **Launch keybinding** to edit your shortcut in Omarchy's editor.
 
 The default size is **1200 x 600**, centered below the bar. Larger sizes fit
@@ -32,9 +32,9 @@ omarchy plugin add \
   https://github.com/omarchy-QOL/omarchy-cliamp-control.git --enable
 ```
 
-No extra setup is needed. If you have a
-`~/.local/share/cliamp/thunder.webm` file, it plays automatically when CLIamp
-opens. Otherwise, CLIamp starts normally.
+No extra setup is needed. If you have a `~/.local/share/cliamp/thunder.webm`
+file, it plays automatically when CLIamp opens. Otherwise, CLIamp starts
+normally.
 
 ## Update or remove
 
@@ -56,5 +56,6 @@ This plugin is unofficial and is not affiliated with Winamp.
 
 [Development and checks](docs/development.md).
 
-[demo]: https://omarchy-qol.github.io/omarchy-cliamp-control/assets/published/cliamp-quake.mp4
+[demo]:
+  https://omarchy-qol.github.io/omarchy-cliamp-control/assets/published/cliamp-quake.mp4
 [assets]: assets/README.md
