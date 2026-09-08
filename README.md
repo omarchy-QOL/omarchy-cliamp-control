@@ -149,9 +149,9 @@ persistence, observed geometry, and independent error recovery. Dynamic host
 properties can still produce lint
 warnings; successful imports alone do not prove runtime behavior.
 
-Validated against Omarchy `4.0.0.r2071.ga703092`, Quickshell `0.3.1`,
-Qt `6.11.2`, and Hyprland `0.56.2`. The plugin requires the current facade API;
-unsupported hosts need updating.
+Validated on optiplex-sff with Omarchy `4.0.2`, Quickshell `0.3.1`,
+Qt `6.11.2`, and Hyprland `0.56.2`. The plugin requires the native Lua and
+plugin settings APIs used by those versions.
 
 The [architecture review](docs/architecture-review-2026-09-08.md) records the
 geometry and settings history, reproduced regressions, and verification gaps.

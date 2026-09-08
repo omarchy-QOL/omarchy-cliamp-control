@@ -9,6 +9,36 @@ no runtime implementation change is included in this report. The shell was
 restarted and the saved settings restored to Center, 850 x 625. The player and
 settings popup were hidden after testing to release their screen effects.
 
+## Implemented resolution
+
+The subsequent implementation replaces the geometry helper and its delay with
+native Lua dispatch through Quickshell. The service owns desired settings;
+widget commands update that model immediately. Only configuration writes are
+coalesced, separately from geometry.
+
+The compositor controller resizes and positions the managed floating window
+on its own monitor and checks the resulting rectangle synchronously. It also
+owns launch coordination and cancels bar toggles whose originating workspace
+or monitor has changed. The settings popup closes on workspace changes.
+
+Acceptance testing was moved to optiplex-sff at the owner's request. With
+Omarchy 4.0.2, Qt 6.11.2, Quickshell 0.3.1, and Hyprland 0.56.2, the checks
+passed for:
+
+- Width and height drafts remaining unapplied while typing.
+- Enter and clicking elsewhere committing the typed value.
+- Mouse arrows, keyboard steps, and repeated resizing while an arrow is held.
+- Rapid alignment cycles and exact observed dimensions.
+- Five immediate workspace switches after F12 and five after a bar click,
+  without a late reopening or lingering dimming.
+- Portrait and scaled-output geometry, focus moving to another output, and
+  reopening on the landscape output. A temporary headless output supplied the
+  additional monitor and was removed afterward.
+- Disable/re-enable, a burst of eleven cold toggles producing one player,
+  cancellation of late focus, and F12 after a Hyprland reload.
+
+The baseline findings below describe the implementation before these fixes.
+
 ## Findings
 
 ### The service sometimes receives the previous settings
