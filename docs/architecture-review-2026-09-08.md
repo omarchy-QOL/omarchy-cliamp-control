@@ -136,8 +136,9 @@ workspace refactor. See the Qt [SpinBox live property][spinbox-live].
 Left click opens the CLIamp player workspace; right click opens the settings
 popup. They have separate lifetimes and screen effects.
 
-The settings popup has no workspace-change close handler. With the popup open,
-a switch of the underlying regular workspace left both
+The settings popup has no workspace-change close handler. This was already
+true in the initial plugin. With the popup open, a switch of the underlying
+regular workspace left both
 `omarchy-keyboard-panel` and the other monitor's
 `omarchy-keyboard-panel-dismiss` mapped. Closing the popup removed them. The
 host `KeyboardPanel` is transparent outside its card, but its dismissal
@@ -149,11 +150,38 @@ special workspace open on VGA-1 after focus moves to DP-3, even when the
 player has shrunk to a nearly invisible sliver. That leaves a dimmed screen
 with very little visible player content.
 
-After restarting the shell, a regular workspace switch on the player's own
-monitor closed the special workspace in the tested sequence. The exact
-same-monitor lingering-dim case has not been reproduced. This distinction
-must remain explicit: the persistent popup and the wrong-monitor geometry
-are reproduced; they do not prove every possible lingering-dim sequence.
+There is also a reproduced same-monitor race. The button starts a detached
+Bash helper; F12 uses the same helper through a compositor exec dispatcher.
+A sufficiently quick workspace switch runs before that helper reaches
+`hyprctl`. The compositor hides the special workspace during the switch, then
+the delayed toggle opens it again over the newly selected regular workspace.
+
+This reproduced with actual input events on DP-3:
+
+| Sequence                                      | After workspace switch |
+| --------------------------------------------- | ---------------------- |
+| Open player, wait, then Super+2                | Player hidden          |
+| Open settings, wait, then Super+2              | Settings remain open   |
+| Open both, wait, then Super+2                  | Only settings remain   |
+| F12 immediately followed by Super+2            | Player opens afterward |
+| Left-click bar button immediately, then Super+2 | Player opens afterward |
+
+The actual left-click sequence reproduced three times out of three. The
+keyboard sequence reproduced with 0, 2, and 5 ms between individual key
+events; at 10 ms between key events it did not reproduce in this sample.
+Those values are event-injection delays, not a measured universal threshold.
+
+A fixed screenshot patch outside the player and popup had normalized mean
+brightness 0.211710 in the undimmed baseline. It remained identical after all
+three settled workspace-switch sequences, even with the settings popup still
+mapped. In the rapid-toggle cases it dropped to 0.084946, approximately 40% of
+the baseline, matching the configured 60% special-workspace dimming.
+
+The screen is therefore being dimmed by a special workspace opened too late,
+rather than by the settings popup. The popup's retained input surfaces and the
+wrong-monitor geometry remain separate defects. Detached launching already
+existed in the earlier plugin family; this test proves the current race, not
+that a particular September commit first introduced it.
 
 ### Restarting helps stale runtime state, but does not repair these paths
 
@@ -268,9 +296,11 @@ Do not restore an old checkout wholesale or reintroduce compatibility paths.
 4. Restore a short, value-guarded geometry update cycle. Coalesce repeated
    input without waiting for the entire interaction to stop. Avoid resetting
    the apply timer for identical snapshots.
-5. Close the settings popup when its workspace context changes. Define
-   player dismissal separately and verify the reported dimming sequence on
-   both monitors.
+5. Close the settings popup when its workspace context changes. Route player
+   toggles through one ordered path and cancel an opening request if its
+   originating workspace context has changed. Avoid a detached shell job for
+   a simple compositor toggle. Removing that extra hop reduces the race
+   window; context-aware cancellation is the correctness requirement.
 6. Correct the host snapshot publication order upstream. Read the new source
    value or publish after the derived bar configuration changes. The minimal
    Qt reproduction above provides a focused regression case.
@@ -297,7 +327,8 @@ The next implementation needs acceptance checks for:
 - Moving focus between landscape and portrait outputs while the player stays
   open; reopening it on the other output; scaled and reserved work areas.
 - Workspace changes while the player and settings popup are open, checking
-  both special-workspace visibility and all popup/dismissal surfaces.
+  both special-workspace visibility and all popup/dismissal surfaces. Include
+  a switch immediately after a left click or F12, before its toggle executes.
 - Disable/re-enable, reload, and fresh launch with current settings.
 
 Raw local evidence and temporary reproducers are under
@@ -305,6 +336,11 @@ Raw local evidence and temporary reproducers are under
 `latency-trace.json`, `burst.json`, `resize.json`, `helper-benchmark.json`,
 `tst_HostSnapshots.qml`, and the captured runtime state and screenshots.
 Temporary diagnostic IPC is absent from the restored shell.
+
+The follow-up dimming evidence is under `/tmp/cliamp-dimming-qa/`:
+`results.json`, `mouse-results.json`, input reproducers, and screenshots.
+The input daemon was stopped and the original regular workspaces and focus
+were restored after the experiment.
 
 [spinbox-live]:
   https://doc.qt.io/qt-6/qml-qtquick-controls-spinbox.html#live-prop
