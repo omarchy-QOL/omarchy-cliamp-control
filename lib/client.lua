@@ -8,9 +8,12 @@ local function managed(window)
 end
 
 local function report(status, ...)
-  hl.dispatch(hl.dsp.event(table.concat({
+  local message = table.concat({
     "cliamp", state.epoch, state.revision, status, ...,
-  }, ",")))
+  }, ",")
+  if state.last_report == message then return end
+  state.last_report = message
+  hl.dispatch(hl.dsp.event(message))
 end
 
 function M.rectangle(monitor, alignment, width, height)
@@ -103,8 +106,9 @@ function M.install(epoch, launcher, revision, alignment, width, height)
       hl.dispatch(hl.dsp.focus({window = "address:" .. window.address}))
     end
   end)
-  for _, event in ipairs({"monitor.layout_changed", "workspace.special_active",
-      "workspace.move_to_monitor", "window.move_to_workspace"}) do
+  for _, event in ipairs({"config.props_refreshed", "monitor.layout_changed",
+      "workspace.special_active", "workspace.move_to_monitor",
+      "window.move_to_workspace"}) do
     state.listeners[#state.listeners + 1] = hl.on(event, M.apply)
   end
   M.configure(epoch, revision, alignment, width, height)
