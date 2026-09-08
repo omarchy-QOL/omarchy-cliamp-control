@@ -107,10 +107,11 @@ Item {
     revision++
     if (ready) dispatch("configure", geometryArgs())
     persistPending = true
-    Qt.callLater(persistSettings)
+    saveTimer.restart()
   }
 
   function persistSettings() {
+    saveTimer.stop()
     if (!persistPending || !shell) return
     persistPending = false
     persisting = true
@@ -214,6 +215,12 @@ Item {
       if (event.name === "custom") root.acceptGeometry(event.data)
       else if (event.name === "configreloaded") root.install()
     }
+  }
+
+  Timer {
+    id: saveTimer
+    interval: 250
+    onTriggered: root.persistSettings()
   }
 
   Process {

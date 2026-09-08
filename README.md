@@ -62,7 +62,8 @@ without a timer or a helper process. Persistence uses Omarchy's supported
 
 Step buttons apply immediately. Typing a custom dimension leaves the window
 unchanged until Enter or a click elsewhere commits the field. Pending saves
-are combined at the end of the event loop; they never delay geometry commands.
+are combined after 250 ms without another committed change; they never delay
+geometry commands.
 The settings popup closes when the workspace or focused monitor changes.
 
 The compositor-side controller in `lib/client.lua` owns the plugin's window
