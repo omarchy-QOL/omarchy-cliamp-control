@@ -299,6 +299,7 @@ Panel {
         }
 
         ToggleRow {
+          objectName: "dimRow"
           label: "Dim background"
           checked: root.dimBackground
           tooltipText: "Applied only while the CLIamp drop-down is visible."
@@ -408,6 +409,16 @@ Panel {
     width: parent ? parent.width : implicitWidth
     implicitHeight: Style.space(24)
 
+    MouseArea {
+      id: mouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onEntered: row.hovered(true)
+      onExited: row.hovered(false)
+      onClicked: row.toggled()
+    }
+
     RowLayout {
       anchors.fill: parent
       spacing: Style.space(8)
@@ -426,27 +437,22 @@ Panel {
         Layout.preferredHeight: Style.space(24)
 
         ToggleSwitch {
+          id: toggle
+          objectName: "dimSwitch"
           anchors.centerIn: parent
+          trackHeight: Style.space(16)
           checked: row.checked
-          interactive: false
           cursorRing: false
           foreground: root.foreground
+          onHovered: function(isHovered) { row.hovered(isHovered) }
+          onToggled: row.toggled()
         }
       }
     }
 
-    MouseArea {
-      id: mouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onEntered: row.hovered(true)
-      onExited: row.hovered(false)
-      onClicked: row.toggled()
-    }
-
     PanelToolTip {
-      visible: row.tooltipText !== "" && mouse.containsMouse
+      visible: row.tooltipText !== ""
+        && (mouse.containsMouse || toggle.containsMouse)
       text: row.tooltipText
       fontFamily: root.fontFamily
     }
