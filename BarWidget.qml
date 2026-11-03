@@ -221,13 +221,14 @@ Panel {
         spacing: Style.spacing.md
 
         CursorSurface {
-          width: heroContent.implicitWidth
+          width: heroContent.implicitWidth + Style.space(16)
           implicitHeight: heroContent.implicitHeight
           hasCursor: heroMouse.containsMouse
           foreground: root.foreground
 
           Row {
             id: heroContent
+            anchors.centerIn: parent
             spacing: Style.space(14)
 
             Text {
