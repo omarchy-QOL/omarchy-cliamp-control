@@ -354,7 +354,7 @@ Panel {
         Component.onCompleted: field.live = false
         Layout.preferredWidth: fieldWidth
         Layout.alignment: Qt.AlignVCenter
-        fieldWidth: Style.space(80)
+        fieldWidth: Style.space(64)
         from: 1
         to: 9999
         stepSize: 50
