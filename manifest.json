@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.ilyazar.cliamp",
   "name": "CLIamp quake",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "author": "ilyaZar",
   "license": "MIT",
   "description": "Quake-style CLIamp: a TUI in its own edge-aligned Hyprland drop-down with configurable position and size, compact bar controls, and measured idle plugin overhead below 4 MiB excluding CLIamp and its terminal.",

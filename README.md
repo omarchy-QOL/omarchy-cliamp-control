@@ -1,7 +1,7 @@
 # CLIamp quake
 
 A Quake-style drop-down for CLIamp. Open it from the bar or your music shortcut,
-then choose its size and horizontal position. Under 1,000 lines of core code,
+then choose its screen edge, position, and size. Under 1,200 lines of core code,
 with measured idle plugin overhead below 4 MiB, excluding CLIamp and its terminal.
 
 [![CLIamp drop-down and window controls](preview.png)][demo]
@@ -16,7 +16,13 @@ player. The key and mouse overlay in the video is a separate tool.
   toggle background dimming.
 - Size arrows resize immediately in 50 px steps. Typed values apply on **Enter**
   or when you click elsewhere in the panel.
+- Click the panel header to show or hide CLIamp without leaving the panel.
 - Select **Launch keybinding** to edit your shortcut in Omarchy's editor.
+
+Turning off **Dim background** applies while CLIamp is open. Hyprland has one
+global special-workspace dim, so other special workspaces opened meanwhile stay
+undimmed too. Changing it while CLIamp is open replays the slide-in, because
+Hyprland only reads the value when the workspace opens.
 
 The default size is **1200 x 600**, centered on the top edge. Larger sizes fit
 within the available screen space. Regular CLIamp windows are unaffected.
