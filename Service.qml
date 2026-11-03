@@ -39,13 +39,15 @@ Item {
 
   function geometryArgs() {
     return [epoch, revision, settings.edge, settings.placement,
-      settings.windowWidth, settings.windowHeight]
+      settings.windowWidth, settings.windowHeight,
+      settings.dimBackground ? 1 : 0]
   }
 
   function receiveSettings(entry) {
     if (persistPending || persisting || tearingDown) return
     if (!entry || (entry.edge === undefined && entry.placement === undefined
-        && entry.windowWidth === undefined && entry.windowHeight === undefined))
+        && entry.windowWidth === undefined && entry.windowHeight === undefined
+        && entry.dimBackground === undefined))
       return
     const next = Settings.normalize(entry)
     if (JSON.stringify(next) === JSON.stringify(settings)) return
@@ -78,10 +80,11 @@ Item {
     }
   }
 
-  function install() {
+  function install(reloaded) {
     if (!shell || tearingDown) return
     const args = geometryArgs()
     args.splice(1, 0, pluginDir + "scripts/launch_cliamp.sh")
+    args.push(reloaded ? 1 : 0)
     dispatch("install", args)
     ready = true
     syncBindings()
@@ -167,14 +170,14 @@ Item {
 
   onShellChanged: if (shell) {
     receiveSettings(Settings.findEntry(shell.barConfig, pluginId))
-    install()
+    install(false)
   }
 
   Connections {
     target: root.compositor
     function onRawEvent(event) {
       if (event.name === "custom") root.acceptGeometry(event.data)
-      else if (event.name === "configreloaded") root.install()
+      else if (event.name === "configreloaded") root.install(true)
     }
   }
 

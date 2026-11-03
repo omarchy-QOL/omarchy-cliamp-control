@@ -12,6 +12,7 @@ function normalize(entry) {
       ? entry.edge : "Top",
     placement: ["Start", "Center", "End"].indexOf(entry.placement) >= 0
       ? entry.placement : "Center",
+    dimBackground: entry.dimBackground !== false,
     windowWidth: dimension(entry.windowWidth, 1200),
     windowHeight: dimension(entry.windowHeight, 600)
   }

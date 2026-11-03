@@ -23,6 +23,7 @@ Panel {
     ? geometryService.settings : Settings.normalize(root.settings)
   readonly property string edge: config.edge
   readonly property string placement: config.placement
+  readonly property bool dimBackground: config.dimBackground
   readonly property bool verticalEdge: edge === "Left" || edge === "Right"
   readonly property string positionLabel: {
     const labels = verticalEdge
@@ -40,8 +41,8 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
-  readonly property int keybindingIndex: 4
-  readonly property int settingsCount: 5
+  readonly property int keybindingIndex: 5
+  readonly property int settingsCount: 6
   readonly property string tooltip: actionTooltip("CLIamp", [
     ["Left click:", "toggle"],
     ["Right click:", "window settings"]
@@ -111,11 +112,18 @@ Panel {
       nextValue(["Start", "Center", "End"], placement, direction))
   }
 
+  function toggleDimming() {
+    commitFields()
+    if (geometryService)
+      geometryService.setSetting("dimBackground", !dimBackground)
+  }
+
   function activateSelected() {
     if (selectedIndex === 0) cycleEdge()
     else if (selectedIndex === 1) cyclePlacement()
     else if (selectedIndex === 2) widthRow.focusField()
     else if (selectedIndex === 3) heightRow.focusField()
+    else if (selectedIndex === 4) toggleDimming()
     else if (selectedIndex === keybindingIndex) launchKeybindings()
   }
 
@@ -190,6 +198,7 @@ Panel {
         else if (key === "a") root.cyclePlacement()
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()
+        else if (key === "d") root.toggleDimming()
         else if (key === "k") root.launchKeybindings()
       }
 
@@ -281,6 +290,15 @@ Panel {
           }
         }
 
+        ToggleRow {
+          label: "Dim background"
+          checked: root.dimBackground
+          tooltipText: "Applied only while the CLIamp drop-down is visible."
+          hasCursor: root.selectedIndex === 4
+          onHovered: function(on) { if (on) root.selectedIndex = 4 }
+          onToggled: root.toggleDimming()
+        }
+
         MenuRow {
           label: "Launch keybinding"
           value: root.geometryService
@@ -360,6 +378,63 @@ Panel {
       onEntered: row.hovered(true)
       onExited: row.hovered(false)
       onClicked: row.clicked()
+    }
+
+    PanelToolTip {
+      visible: row.tooltipText !== "" && mouse.containsMouse
+      text: row.tooltipText
+      fontFamily: root.fontFamily
+    }
+  }
+
+  component ToggleRow: Item {
+    id: row
+
+    required property string label
+    required property bool checked
+    property string tooltipText: ""
+    property bool hasCursor: false
+    signal toggled()
+    signal hovered(bool isHovered)
+
+    width: parent ? parent.width : implicitWidth
+    implicitHeight: Style.space(24)
+
+    RowLayout {
+      anchors.fill: parent
+      spacing: Style.space(8)
+
+      Text {
+        text: row.label
+        color: root.foreground
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.body
+        font.bold: row.hasCursor
+        Layout.fillWidth: true
+      }
+
+      Item {
+        Layout.preferredWidth: Style.space(64)
+        Layout.preferredHeight: Style.space(24)
+
+        ToggleSwitch {
+          anchors.centerIn: parent
+          checked: row.checked
+          interactive: false
+          cursorRing: false
+          foreground: root.foreground
+        }
+      }
+    }
+
+    MouseArea {
+      id: mouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onEntered: row.hovered(true)
+      onExited: row.hovered(false)
+      onClicked: row.toggled()
     }
 
     PanelToolTip {

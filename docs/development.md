@@ -8,7 +8,9 @@ requests once per plugin, including when the bar appears on several monitors.
 subscriptions, launch guard, and geometry for `org.omarchy.cliamp.quake`. It
 sizes the dedicated special workspace with gaps, following Omarchy's Quake
 console design while preserving configurable edge, position, and dimensions.
-Ordinary CLIamp windows use a different app ID.
+It can temporarily override Hyprland's global special-workspace dim value while
+visible and restores the exact previous value when hidden or stopped. Ordinary
+CLIamp windows use a different app ID.
 
 `lib/bindings.lua` evaluates the configured Lua bindings with a recording
 adapter because Hyprland exposes opaque dispatcher IDs. It recognizes CLIamp

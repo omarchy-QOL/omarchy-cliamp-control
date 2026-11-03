@@ -13,6 +13,20 @@ local function managed_window()
   end
 end
 
+local function sync_dim()
+  local ws = hl.get_workspace(workspace)
+  local undim = ws ~= nil and ws.visible == true and not state.dim_background
+  if undim == state.dim_overridden then return end
+  if undim then
+    state.dim_restore = hl.get_config("decoration.dim_special") or 0
+    hl.config({decoration = {dim_special = 0}})
+  else
+    hl.config({decoration = {dim_special = state.dim_restore}})
+    state.dim_restore = nil
+  end
+  state.dim_overridden = undim
+end
+
 local function report(status, ...)
   local message = table.concat({
     "cliamp", state.epoch, state.revision, status, ...,
@@ -46,6 +60,7 @@ function M.gaps(monitor, edge, placement, width, height)
 end
 
 local function fit(monitor)
+  sync_dim()
   if not monitor then
     local ws = hl.get_workspace(workspace)
     monitor = ws and ws.visible and ws.monitor or hl.get_active_monitor()
@@ -75,7 +90,8 @@ function M.apply(monitor)
   if not ok then report("error", tostring(error)) end
 end
 
-function M.configure(epoch, revision, edge, placement, width, height)
+function M.configure(epoch, revision, edge, placement, width, height,
+    dim_background)
   assert(state and state.epoch == epoch, "CLIamp controller is not installed")
   assert(edge == "Top" or edge == "Right" or edge == "Bottom" or edge == "Left")
   assert(placement == "Start" or placement == "Center" or placement == "End")
@@ -83,6 +99,7 @@ function M.configure(epoch, revision, edge, placement, width, height)
   assert(height >= 1 and height <= 9999 and height % 1 == 0)
   state.revision, state.edge, state.placement, state.width, state.height =
     revision, edge, placement, width, height
+  state.dim_background = dim_background == 1
   M.apply()
 end
 
@@ -92,11 +109,15 @@ function M.hide()
   if ws and ws.visible then
     hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
     hl.exec_scheduled_prop_refresh_immediately()
+    M.apply()
   end
 end
 
-function M.stop(epoch)
+function M.stop(epoch, config_reloaded)
   if not state or state.epoch ~= epoch then return end
+  if state.dim_overridden and config_reloaded ~= 1 then
+    hl.config({decoration = {dim_special = state.dim_restore}})
+  end
   for _, listener in ipairs(state.listeners) do listener:remove() end
   if state.launch_timer then state.launch_timer:set_enabled(false) end
   if state.rule then state.rule:set_enabled(false) end
@@ -104,9 +125,11 @@ function M.stop(epoch)
   _G.cliamp_control = nil
 end
 
-function M.install(epoch, launcher, revision, edge, placement, width, height)
-  if state then M.stop(state.epoch) end
-  state = {epoch = epoch, launcher = launcher, listeners = {}}
+function M.install(epoch, launcher, revision, edge, placement, width, height,
+    dim_background, config_reloaded)
+  if state then M.stop(state.epoch, config_reloaded) end
+  state = {epoch = epoch, launcher = launcher, listeners = {},
+    dim_overridden = false}
   _G.cliamp_control = state
   state.window_rule = hl.window_rule({name = "cliamp-control",
     match = {initial_class = "^org[.]omarchy[.]cliamp[.]quake$"},
@@ -124,12 +147,14 @@ function M.install(epoch, launcher, revision, edge, placement, width, height)
     if managed(window) then M.apply() end
   end)
   state.listeners[3] = hl.on("monitor.layout_changed", M.apply)
-  for _, event in ipairs({"workspace.special_active", "workspace.move_to_monitor"}) do
-    state.listeners[#state.listeners + 1] = hl.on(event, function(ws, monitor)
-      if ws and ws.name == workspace then M.apply(monitor) end
-    end)
-  end
-  M.configure(epoch, revision, edge, placement, width, height)
+  state.listeners[4] = hl.on("workspace.special_active", function(ws, monitor)
+    M.apply(ws and ws.name == workspace and monitor or nil)
+  end)
+  state.listeners[5] = hl.on("workspace.move_to_monitor", function(ws, monitor)
+    if ws and ws.name == workspace then M.apply(monitor) end
+  end)
+  M.configure(epoch, revision, edge, placement, width, height,
+    dim_background)
 end
 
 function M.toggle(monitor_name, origin_workspace)

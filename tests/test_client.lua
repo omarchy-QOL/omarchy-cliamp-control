@@ -9,12 +9,18 @@ local player = {class = "org.omarchy.cliamp.quake", mapped = true,
 local ordinary = {class = "org.omarchy.cliamp", mapped = true}
 local windows, actions, events, listeners, launches, rules =
   {ordinary, player}, {}, {}, {}, {}, {}
+local dim_special = 0.6
 local function action(kind, args) return {kind = kind, args = args} end
 local function handle() return {set_enabled = function(self, enabled) self.enabled = enabled end} end
 hl = {
   get_active_monitor = function() return monitor end,
   get_workspace = function(name) return name == special.name and special or nil end,
   get_windows = function() return windows end,
+  get_config = function(key)
+    assert(key == "decoration.dim_special")
+    return dim_special
+  end,
+  config = function(values) dim_special = values.decoration.dim_special end,
   exec_scheduled_prop_refresh_immediately = function() end,
   workspace_rule = function(rule)
     rules[#rules + 1] = rule
@@ -51,32 +57,32 @@ hl = {
 
 local client = dofile(arg[1])
 client.install("test", "/tmp/player's launcher.sh", 0,
-  "Top", "Start", 850, 425)
+  "Top", "Start", 850, 425, 1, 0)
 local rule = rules[#rules]
 assert(rule.workspace == "special:cliamp" and rule.gaps_in == 0 and rule.no_border)
 assert(rule.animation == "slide top")
 assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 1070)
 assert(rule.gaps_out.top == 0 and rule.gaps_out.bottom == 749)
 local written = #rules
-client.configure("test", 1, "Top", "Start", 850, 425)
+client.configure("test", 1, "Top", "Start", 850, 425, 1)
 assert(#rules == written, "unchanged geometry rewrote the workspace rule")
-client.configure("test", 2, "Top", "Center", 850, 425)
+client.configure("test", 2, "Top", "Center", 850, 425, 1)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 535 and rule.gaps_out.right == 535)
-client.configure("test", 3, "Top", "End", 850, 425)
+client.configure("test", 3, "Top", "End", 850, 425, 1)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 1070 and rule.gaps_out.right == 0)
-client.configure("test", 4, "Bottom", "Center", 850, 425)
+client.configure("test", 4, "Bottom", "Center", 850, 425, 1)
 rule = rules[#rules]
 assert(rule.animation == "slide bottom")
 assert(rule.gaps_out.left == 535 and rule.gaps_out.right == 535)
 assert(rule.gaps_out.top == 749 and rule.gaps_out.bottom == 0)
-client.configure("test", 5, "Left", "Start", 850, 425)
+client.configure("test", 5, "Left", "Start", 850, 425, 1)
 rule = rules[#rules]
 assert(rule.animation == "slide left")
 assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 1070)
 assert(rule.gaps_out.top == 0 and rule.gaps_out.bottom == 749)
-client.configure("test", 6, "Right", "End", 850, 425)
+client.configure("test", 6, "Right", "End", 850, 425, 1)
 rule = rules[#rules]
 assert(rule.animation == "slide right")
 assert(rule.gaps_out.left == 1070 and rule.gaps_out.right == 0)
@@ -91,7 +97,7 @@ special.monitor = portrait
 listeners["workspace.move_to_monitor"](special, portrait)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 230 and rule.gaps_out.top == 1469)
-client.configure("test", 7, "Left", "Center", 850, 625)
+client.configure("test", 7, "Left", "Center", 850, 625, 1)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 230)
 assert(rule.gaps_out.top == 634 and rule.gaps_out.bottom == 635)
@@ -113,9 +119,19 @@ assert(#actions == count, "a changed originating workspace must cancel the click
 client.toggle("portrait", 2)
 assert(#actions == count, "a changed monitor must cancel the click")
 client.toggle("landscape", 2)
-assert(special.visible)
+assert(special.visible and dim_special == 0.6)
+client.configure("test", 8, "Left", "Center", 850, 625, 0)
+assert(dim_special == 0, "disabled dimming was not applied")
 client.hide()
-assert(not special.visible)
+assert(not special.visible and dim_special == 0.6,
+  "the original dim value was not restored")
+client.toggle()
+assert(special.visible and dim_special == 0)
+special.visible = false
+monitor.active_special_workspace = {name = "special:other"}
+listeners["workspace.special_active"]({name = "special:other"}, monitor)
+assert(dim_special == 0.6, "another special workspace did not restore dimming")
+monitor.active_special_workspace = nil
 
 windows = {ordinary}
 client.toggle()
@@ -137,4 +153,5 @@ client.stop("wrong-instance")
 assert(_G.cliamp_control)
 client.stop("test")
 assert(not _G.cliamp_control and next(listeners) == nil)
+assert(dim_special == 0.6, "stop did not restore the original dim value")
 print("ok - workspace gaps, monitor ownership, and guarded toggles")

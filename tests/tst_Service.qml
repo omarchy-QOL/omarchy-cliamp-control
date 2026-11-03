@@ -64,7 +64,7 @@ ShellRoot {
       host.rejectUpdates = false
       host.widget = null
       host.barConfig = {layout: {right: [{
-        id: host.pluginId, edge: "Top", placement: "End",
+        id: host.pluginId, edge: "Top", placement: "End", dimBackground: true,
         windowWidth: 850, windowHeight: 425
       }]}}
       service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml",
@@ -145,6 +145,9 @@ ShellRoot {
       widget.cyclePlacement()
       compare(widget.placement, "Start")
       compare(widget.positionLabel, "Left")
+      verify(widget.dimBackground)
+      widget.toggleDimming()
+      verify(!widget.dimBackground)
       const commandCount = compositor.commands.length
       widget.toggleFromPanel()
       compare(compositor.commands.length, commandCount + 1)

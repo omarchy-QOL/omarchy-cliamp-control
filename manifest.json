@@ -20,6 +20,7 @@
     "defaults": {
       "edge": "Top",
       "placement": "Center",
+      "dimBackground": true,
       "windowWidth": 1200,
       "windowHeight": 600
     },
@@ -55,6 +56,12 @@
         "max": 9999,
         "step": 50,
         "defaultValue": 600
+      },
+      {
+        "key": "dimBackground",
+        "type": "boolean",
+        "label": "Dim background",
+        "defaultValue": true
       }
     ]
   }

@@ -12,8 +12,8 @@ player. The key and mouse overlay in the video is a separate tool.
 ## Use
 
 - **Left-click** the lightning bolt to show or hide CLIamp.
-- **Right-click** to choose a screen edge, position the player along it, and
-  adjust its size.
+- **Right-click** to choose a screen edge, position and resize the player, or
+  toggle background dimming.
 - Size arrows resize immediately in 50 px steps. Typed values apply on **Enter**
   or when you click elsewhere in the panel.
 - Select **Launch keybinding** to edit your shortcut in Omarchy's editor.
