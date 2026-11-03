@@ -215,17 +215,25 @@ Panel {
         width: parent.width
         spacing: Style.spacing.md
 
-        PanelHero {
+        CursorSurface {
           width: parent.width
-          title: "CLIamp"
+          implicitHeight: hero.implicitHeight
+          hasCursor: heroMouse.containsMouse
           foreground: root.foreground
-          fontFamily: root.fontFamily
-          iconComponent: Component {
-            Text {
-              text: button.text
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.display
+
+          PanelHero {
+            id: hero
+            anchors.fill: parent
+            title: "CLIamp"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            iconComponent: Component {
+              Text {
+                text: button.text
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.display
+              }
             }
           }
 
