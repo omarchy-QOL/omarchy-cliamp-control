@@ -140,7 +140,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: popup.fittedContentWidth(Style.space(330))
+    contentWidth: popup.fittedContentWidth(Style.space(280))
     contentHeight: popup.fittedContentHeight(content.implicitHeight)
 
     PanelKeyCatcher {
@@ -175,7 +175,7 @@ Panel {
       Column {
         id: content
         width: parent.width
-        spacing: Style.space(8)
+        spacing: Style.spacing.md
 
         PanelHero {
           width: parent.width
@@ -263,8 +263,8 @@ Panel {
 
           Text {
             width: parent.width
-            text: "1. Alignment moves the window along the x-axis.\n"
-              + "2. The top edge avoids reserved areas."
+            text: "Alignment sets horizontal placement.\n"
+              + "The top edge avoids reserved areas."
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -284,7 +284,7 @@ Panel {
     signal hovered(bool isHovered)
 
     width: parent ? parent.width : implicitWidth
-    implicitHeight: Style.space(42)
+    implicitHeight: Style.spacing.popupRowHeight
     foreground: root.foreground
 
     RowLayout {
@@ -325,11 +325,12 @@ Panel {
     }
   }
 
-  component DimensionRow: CursorSurface {
+  component DimensionRow: Item {
     id: dimension
 
     required property string label
     required property int value
+    property bool hasCursor: false
     readonly property bool fieldActive: numberField.field.activeFocus
     signal modified(int value)
     signal hovered(bool isHovered)
@@ -341,8 +342,7 @@ Panel {
     }
 
     width: parent ? parent.width : implicitWidth
-    implicitHeight: Style.space(48)
-    foreground: root.foreground
+    implicitHeight: Style.spacing.controlHeight
 
     RowLayout {
       anchors.fill: parent
@@ -365,7 +365,7 @@ Panel {
         Component.onCompleted: field.live = false
         Layout.preferredWidth: fieldWidth
         Layout.alignment: Qt.AlignVCenter
-        fieldWidth: Style.space(128)
+        fieldWidth: Style.spacing.numberFieldWidth
         from: 1
         to: 100000
         stepSize: 50
