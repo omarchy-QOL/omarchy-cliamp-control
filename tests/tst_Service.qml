@@ -145,6 +145,10 @@ ShellRoot {
       widget.cyclePlacement()
       compare(widget.placement, "Start")
       compare(widget.positionLabel, "Left")
+      const commandCount = compositor.commands.length
+      widget.toggleFromPanel()
+      compare(compositor.commands.length, commandCount + 1)
+      verify(compositor.commands[commandCount].includes(".toggle("))
       widget.persistDimension("windowWidth", 700)
       compare(widget.windowWidth, 700)
       service.persistSettings()

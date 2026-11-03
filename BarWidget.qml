@@ -94,6 +94,11 @@ Panel {
     if (geometryService) geometryService.launchKeybindings(keybindingsScript)
   }
 
+  function toggleFromPanel() {
+    if (geometryService) geometryService.togglePlayer(
+      geometryService.contextFor(popup.screen))
+  }
+
   function cycleEdge(direction) {
     commitFields()
     if (geometryService) geometryService.setSetting("edge",
@@ -213,6 +218,20 @@ Panel {
               font.family: root.fontFamily
               font.pixelSize: Style.font.display
             }
+          }
+
+          MouseArea {
+            id: heroMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggleFromPanel()
+          }
+
+          PanelToolTip {
+            visible: heroMouse.containsMouse
+            text: "Show or hide CLIamp"
+            fontFamily: root.fontFamily
           }
         }
 
