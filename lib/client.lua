@@ -68,8 +68,8 @@ end
 function M.configure(epoch, revision, alignment, width, height)
   assert(state and state.epoch == epoch, "CLIamp controller is not installed")
   assert(alignment == "Left" or alignment == "Center" or alignment == "Right")
-  assert(width >= 1 and width <= 99999 and width % 1 == 0)
-  assert(height >= 1 and height <= 99999 and height % 1 == 0)
+  assert(width >= 1 and width <= 9999 and width % 1 == 0)
+  assert(height >= 1 and height <= 9999 and height % 1 == 0)
   state.revision, state.alignment, state.width, state.height =
     revision, alignment, width, height
   M.apply()
