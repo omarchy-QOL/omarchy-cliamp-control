@@ -21,7 +21,16 @@ Panel {
     ? bar.shell.serviceFor(moduleName) : null
   readonly property var config: geometryService
     ? geometryService.settings : Settings.normalize(root.settings)
-  readonly property string alignment: config.alignment
+  readonly property string edge: config.edge
+  readonly property string placement: config.placement
+  readonly property bool verticalEdge: edge === "Left" || edge === "Right"
+  readonly property string positionLabel: {
+    const labels = verticalEdge
+      ? ["Top", "Center", "Bottom"] : ["Left", "Center", "Right"]
+    return labels[["Start", "Center", "End"].indexOf(placement)]
+  }
+  readonly property string positionAxis: verticalEdge
+    ? "Vertical position" : "Horizontal position"
   readonly property int windowWidth: config.windowWidth
   readonly property int windowHeight: config.windowHeight
   readonly property color foreground: bar
@@ -31,8 +40,8 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
-  readonly property int keybindingIndex: 3
-  readonly property int settingsCount: 4
+  readonly property int keybindingIndex: 4
+  readonly property int settingsCount: 5
   readonly property string tooltip: actionTooltip("CLIamp", [
     ["Left click:", "toggle"],
     ["Right click:", "window settings"]
@@ -60,9 +69,8 @@ Panel {
     })).join("\n")
   }
 
-  function nextAlignment(direction) {
-    const values = ["Left", "Center", "Right"]
-    return values[(values.indexOf(alignment) + (direction || 1)
+  function nextValue(values, current, direction) {
+    return values[(values.indexOf(current) + (direction || 1)
       + values.length) % values.length]
   }
 
@@ -86,16 +94,23 @@ Panel {
     if (geometryService) geometryService.launchKeybindings(keybindingsScript)
   }
 
-  function cycleAlignment(direction) {
+  function cycleEdge(direction) {
     commitFields()
-    if (geometryService)
-      geometryService.setSetting("alignment", nextAlignment(direction))
+    if (geometryService) geometryService.setSetting("edge",
+      nextValue(["Top", "Right", "Bottom", "Left"], edge, direction))
+  }
+
+  function cyclePlacement(direction) {
+    commitFields()
+    if (geometryService) geometryService.setSetting("placement",
+      nextValue(["Start", "Center", "End"], placement, direction))
   }
 
   function activateSelected() {
-    if (selectedIndex === 0) cycleAlignment()
-    else if (selectedIndex === 1) widthRow.focusField()
-    else if (selectedIndex === 2) heightRow.focusField()
+    if (selectedIndex === 0) cycleEdge()
+    else if (selectedIndex === 1) cyclePlacement()
+    else if (selectedIndex === 2) widthRow.focusField()
+    else if (selectedIndex === 3) heightRow.focusField()
     else if (selectedIndex === keybindingIndex) launchKeybindings()
   }
 
@@ -157,14 +172,17 @@ Panel {
         if (dy !== 0)
           root.selectedIndex = (root.selectedIndex + dy
             + root.settingsCount) % root.settingsCount
-        if (dx !== 0 && root.selectedIndex === 0) root.cycleAlignment(dx)
+        if (dx !== 0 && root.selectedIndex === 0) root.cycleEdge(dx)
+        else if (dx !== 0 && root.selectedIndex === 1)
+          root.cyclePlacement(dx)
       }
       onActivateRequested: root.activateSelected()
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(text) {
         const key = String(text).toLowerCase()
-        if (key === "a") root.cycleAlignment()
+        if (key === "e") root.cycleEdge()
+        else if (key === "a") root.cyclePlacement()
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()
         else if (key === "k") root.launchKeybindings()
@@ -203,21 +221,30 @@ Panel {
         }
 
         MenuRow {
-          label: "Horizontal alignment"
-          value: root.alignment
-          tooltipText: "Alignment sets horizontal placement."
+          label: "Screen edge"
+          value: root.edge
+          tooltipText: "Choose where the drop-down meets the screen."
           hasCursor: root.selectedIndex === 0
           onHovered: function(on) { if (on) root.selectedIndex = 0 }
-          onClicked: root.cycleAlignment()
+          onClicked: root.cycleEdge()
+        }
+
+        MenuRow {
+          label: root.positionAxis
+          value: root.positionLabel
+          tooltipText: "Position along the selected edge."
+          hasCursor: root.selectedIndex === 1
+          onHovered: function(on) { if (on) root.selectedIndex = 1 }
+          onClicked: root.cyclePlacement()
         }
 
         DimensionRow {
           id: widthRow
           objectName: "widthRow"
           label: "Window width"
-          hasCursor: root.selectedIndex === 1
+          hasCursor: root.selectedIndex === 2
           value: root.windowWidth
-          onHovered: function(on) { if (on) root.selectedIndex = 1 }
+          onHovered: function(on) { if (on) root.selectedIndex = 2 }
           onModified: function(value) {
             root.persistDimension("windowWidth", value)
           }
@@ -227,9 +254,9 @@ Panel {
           id: heightRow
           objectName: "heightRow"
           label: "Window height"
-          hasCursor: root.selectedIndex === 2
+          hasCursor: root.selectedIndex === 3
           value: root.windowHeight
-          onHovered: function(on) { if (on) root.selectedIndex = 2 }
+          onHovered: function(on) { if (on) root.selectedIndex = 3 }
           onModified: function(value) {
             root.persistDimension("windowHeight", value)
           }

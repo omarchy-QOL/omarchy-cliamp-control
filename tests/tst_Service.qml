@@ -64,7 +64,8 @@ ShellRoot {
       host.rejectUpdates = false
       host.widget = null
       host.barConfig = {layout: {right: [{
-        id: host.pluginId, alignment: "Right", windowWidth: 850, windowHeight: 425
+        id: host.pluginId, edge: "Top", placement: "End",
+        windowWidth: 850, windowHeight: 425
       }]}}
       service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml",
         {compositor: compositor})
@@ -93,7 +94,7 @@ ShellRoot {
       compare(compositor.commands.length, count + 2)
       compare(service.settings.windowHeight, 500)
       compare(saved.length, 0)
-      service.receiveSettings({alignment: "Left", windowWidth: 850})
+      service.receiveSettings({edge: "Left", placement: "Start", windowWidth: 850})
       compare(service.settings.windowWidth, 900)
       service.persistSettings()
       compare(saved.length, 1)
@@ -102,9 +103,10 @@ ShellRoot {
       service.receiveSettings({})
       compare(service.settings.windowWidth, 900)
       compare(service.settings.windowHeight, 500)
-      service.receiveSettings({alignment: "Left", windowWidth: 700})
+      service.receiveSettings({edge: "Bottom", placement: "End", windowWidth: 700})
       compare(service.settings.windowWidth, 700)
-      compare(service.settings.alignment, "Left")
+      compare(service.settings.edge, "Bottom")
+      compare(service.settings.placement, "End")
     }
 
     function test_observationAndIndependentErrors() {
@@ -134,12 +136,15 @@ ShellRoot {
       widget.bar = bar
       widget.settings = host.barConfig.layout.right[0]
       host.widget = widget
-      widget.cycleAlignment()
-      compare(widget.alignment, "Left")
-      widget.cycleAlignment()
-      compare(widget.alignment, "Center")
-      widget.cycleAlignment(-1)
-      compare(widget.alignment, "Left")
+      widget.cycleEdge()
+      compare(widget.edge, "Right")
+      compare(widget.positionLabel, "Bottom")
+      widget.cycleEdge()
+      compare(widget.edge, "Bottom")
+      compare(widget.positionLabel, "Right")
+      widget.cyclePlacement()
+      compare(widget.placement, "Start")
+      compare(widget.positionLabel, "Left")
       widget.persistDimension("windowWidth", 700)
       compare(widget.windowWidth, 700)
       service.persistSettings()

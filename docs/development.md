@@ -7,7 +7,7 @@ requests once per plugin, including when the bar appears on several monitors.
 `lib/client.lua` owns the runtime workspace and window rules, event
 subscriptions, launch guard, and geometry for `org.omarchy.cliamp.quake`. It
 sizes the dedicated special workspace with gaps, following Omarchy's Quake
-console design while preserving configurable alignment and dimensions.
+console design while preserving configurable edge, position, and dimensions.
 Ordinary CLIamp windows use a different app ID.
 
 `lib/bindings.lua` evaluates the configured Lua bindings with a recording
@@ -48,7 +48,7 @@ unqualified-access errors. Host import metadata can still emit warnings that
 do not affect runtime behavior. Imports alone do not establish runtime
 correctness.
 
-Live checks cover typed and stepped dimensions, alignment, repeated toggles,
+Live checks cover typed and stepped dimensions, every edge and position,
 workspace changes, rotated/scaled monitors, popup dismissal, reloads, and
 disable/removal. Preserve the user's configuration and keep interactive tests
 on the dedicated test host.

@@ -8,8 +8,10 @@ function dimension(value, defaultValue) {
 
 function normalize(entry) {
   return {
-    alignment: ["Left", "Center", "Right"].indexOf(entry.alignment) >= 0
-      ? entry.alignment : "Center",
+    edge: ["Top", "Right", "Bottom", "Left"].indexOf(entry.edge) >= 0
+      ? entry.edge : "Top",
+    placement: ["Start", "Center", "End"].indexOf(entry.placement) >= 0
+      ? entry.placement : "Center",
     windowWidth: dimension(entry.windowWidth, 1200),
     windowHeight: dimension(entry.windowHeight, 600)
   }

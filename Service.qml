@@ -39,13 +39,13 @@ Item {
   }
 
   function geometryArgs() {
-    return [epoch, revision, settings.alignment,
+    return [epoch, revision, settings.edge, settings.placement,
       settings.windowWidth, settings.windowHeight]
   }
 
   function receiveSettings(entry) {
     if (persistPending || persisting || tearingDown) return
-    if (!entry || (entry.alignment === undefined
+    if (!entry || (entry.edge === undefined && entry.placement === undefined
         && entry.windowWidth === undefined && entry.windowHeight === undefined))
       return
     const next = Settings.normalize(entry)

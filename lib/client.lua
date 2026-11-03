@@ -22,7 +22,7 @@ local function report(status, ...)
   hl.dispatch(hl.dsp.event(message))
 end
 
-function M.gaps(monitor, alignment, width, height)
+function M.gaps(monitor, edge, placement, width, height)
   local mw, mh = monitor.width, monitor.height
   if monitor.transform % 2 == 1 then mw, mh = mh, mw end
   local reserved = monitor.reserved
@@ -31,11 +31,18 @@ function M.gaps(monitor, alignment, width, height)
   local usable_height = math.max(1,
     math.floor(mh / monitor.scale - reserved.top - reserved.bottom))
   width, height = math.min(width, usable_width), math.min(height, usable_height)
-  local free = usable_width - width
-  local left = alignment == "Right" and free
-    or alignment == "Center" and math.floor(free / 2) or 0
-  return {top = 0, right = free - left,
-    bottom = usable_height - height, left = left}, width, height
+  local horizontal = usable_width - width
+  local vertical = usable_height - height
+  local horizontal_edge = edge == "Top" or edge == "Bottom"
+  local free = horizontal_edge and horizontal or vertical
+  local offset = placement == "End" and free
+    or placement == "Center" and math.floor(free / 2) or 0
+  local left = horizontal_edge and offset
+    or edge == "Right" and horizontal or 0
+  local top = horizontal_edge and (edge == "Bottom" and vertical or 0)
+    or offset
+  return {top = top, right = horizontal - left,
+    bottom = vertical - top, left = left}, width, height
 end
 
 local function fit(monitor)
@@ -45,12 +52,15 @@ local function fit(monitor)
   end
   if not monitor or not monitor.scale or monitor.scale <= 0 then return end
   local gaps, width, height = M.gaps(monitor,
-    state.alignment, state.width, state.height)
-  local key = table.concat({gaps.left, gaps.right, gaps.bottom}, ":")
+    state.edge, state.placement, state.width, state.height)
+  local animation = "slide " .. state.edge:lower()
+  local key = table.concat({gaps.top, gaps.right, gaps.bottom, gaps.left,
+    animation}, ":")
   if state.gaps_key ~= key then
     state.gaps_key = key
     state.rule = hl.workspace_rule({workspace = workspace, gaps_in = 0,
-      gaps_out = gaps, no_border = true, on_created_empty = ""})
+      gaps_out = gaps, no_border = true, animation = animation,
+      on_created_empty = ""})
     hl.exec_scheduled_prop_refresh_immediately()
   end
   if managed_window() then report("geometry", width, height)
@@ -65,13 +75,14 @@ function M.apply(monitor)
   if not ok then report("error", tostring(error)) end
 end
 
-function M.configure(epoch, revision, alignment, width, height)
+function M.configure(epoch, revision, edge, placement, width, height)
   assert(state and state.epoch == epoch, "CLIamp controller is not installed")
-  assert(alignment == "Left" or alignment == "Center" or alignment == "Right")
+  assert(edge == "Top" or edge == "Right" or edge == "Bottom" or edge == "Left")
+  assert(placement == "Start" or placement == "Center" or placement == "End")
   assert(width >= 1 and width <= 9999 and width % 1 == 0)
   assert(height >= 1 and height <= 9999 and height % 1 == 0)
-  state.revision, state.alignment, state.width, state.height =
-    revision, alignment, width, height
+  state.revision, state.edge, state.placement, state.width, state.height =
+    revision, edge, placement, width, height
   M.apply()
 end
 
@@ -93,7 +104,7 @@ function M.stop(epoch)
   _G.cliamp_control = nil
 end
 
-function M.install(epoch, launcher, revision, alignment, width, height)
+function M.install(epoch, launcher, revision, edge, placement, width, height)
   if state then M.stop(state.epoch) end
   state = {epoch = epoch, launcher = launcher, listeners = {}}
   _G.cliamp_control = state
@@ -118,7 +129,7 @@ function M.install(epoch, launcher, revision, alignment, width, height)
       if ws and ws.name == workspace then M.apply(monitor) end
     end)
   end
-  M.configure(epoch, revision, alignment, width, height)
+  M.configure(epoch, revision, edge, placement, width, height)
 end
 
 function M.toggle(monitor_name, origin_workspace)

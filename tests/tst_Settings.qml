@@ -9,12 +9,15 @@ TestCase {
 
   function test_defaultsAndValidation() {
     compare(Settings.normalize({}), {
-      alignment: "Center", windowWidth: 1200, windowHeight: 600
+      edge: "Top", placement: "Center",
+      windowWidth: 1200, windowHeight: 600
     })
     compare(Settings.normalize({
-      alignment: "Invalid", windowWidth: 1.5, windowHeight: Infinity
+      edge: "Invalid", placement: "Invalid",
+      windowWidth: 1.5, windowHeight: Infinity
     }), {
-      alignment: "Center", windowWidth: 1200, windowHeight: 600
+      edge: "Top", placement: "Center",
+      windowWidth: 1200, windowHeight: 600
     })
     compare(Settings.dimension("850", 1200), 850)
     compare(Settings.dimension(0, 1200), 1200)

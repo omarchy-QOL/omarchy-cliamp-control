@@ -50,20 +50,37 @@ hl = {
 }
 
 local client = dofile(arg[1])
-client.install("test", "/tmp/player's launcher.sh", 0, "Left", 850, 425)
+client.install("test", "/tmp/player's launcher.sh", 0,
+  "Top", "Start", 850, 425)
 local rule = rules[#rules]
 assert(rule.workspace == "special:cliamp" and rule.gaps_in == 0 and rule.no_border)
+assert(rule.animation == "slide top")
 assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 1070)
 assert(rule.gaps_out.top == 0 and rule.gaps_out.bottom == 749)
 local written = #rules
-client.configure("test", 1, "Left", 850, 425)
+client.configure("test", 1, "Top", "Start", 850, 425)
 assert(#rules == written, "unchanged geometry rewrote the workspace rule")
-client.configure("test", 2, "Center", 850, 425)
+client.configure("test", 2, "Top", "Center", 850, 425)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 535 and rule.gaps_out.right == 535)
-client.configure("test", 3, "Right", 850, 425)
+client.configure("test", 3, "Top", "End", 850, 425)
 rule = rules[#rules]
 assert(rule.gaps_out.left == 1070 and rule.gaps_out.right == 0)
+client.configure("test", 4, "Bottom", "Center", 850, 425)
+rule = rules[#rules]
+assert(rule.animation == "slide bottom")
+assert(rule.gaps_out.left == 535 and rule.gaps_out.right == 535)
+assert(rule.gaps_out.top == 749 and rule.gaps_out.bottom == 0)
+client.configure("test", 5, "Left", "Start", 850, 425)
+rule = rules[#rules]
+assert(rule.animation == "slide left")
+assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 1070)
+assert(rule.gaps_out.top == 0 and rule.gaps_out.bottom == 749)
+client.configure("test", 6, "Right", "End", 850, 425)
+rule = rules[#rules]
+assert(rule.animation == "slide right")
+assert(rule.gaps_out.left == 1070 and rule.gaps_out.right == 0)
+assert(rule.gaps_out.top == 749 and rule.gaps_out.bottom == 0)
 
 local portrait = {name = "portrait", id = 0, width = 1920, height = 1080,
   x = 0, y = 0, scale = 1, transform = 1,
@@ -73,16 +90,16 @@ monitor = portrait
 special.monitor = portrait
 listeners["workspace.move_to_monitor"](special, portrait)
 rule = rules[#rules]
-assert(rule.gaps_out.left == 230 and rule.gaps_out.bottom == 1469)
-client.configure("test", 4, "Center", 850, 625)
+assert(rule.gaps_out.left == 230 and rule.gaps_out.top == 1469)
+client.configure("test", 7, "Left", "Center", 850, 625)
 rule = rules[#rules]
-assert(rule.gaps_out.left == 115 and rule.gaps_out.right == 115)
-assert(rule.gaps_out.bottom == 1269)
+assert(rule.gaps_out.left == 0 and rule.gaps_out.right == 230)
+assert(rule.gaps_out.top == 634 and rule.gaps_out.bottom == 635)
 
 local gaps, width, height = client.gaps({width = 2400, height = 1600,
   transform = 0, scale = 2,
   reserved = {left = 10, top = 30, right = 20, bottom = 40}},
-  "Right", 9999, 9999)
+  "Right", "End", 9999, 9999)
 assert(width == 1170 and height == 730)
 assert(gaps.top == 0 and gaps.right == 0 and gaps.bottom == 0 and gaps.left == 0)
 

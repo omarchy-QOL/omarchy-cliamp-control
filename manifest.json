@@ -5,7 +5,7 @@
   "version": "0.1.6",
   "author": "ilyaZar",
   "license": "MIT",
-  "description": "Quake-style CLIamp: a TUI in a Hyprland drop-down, that's it. Under 1,000 lines of core code, with measured idle plugin overhead below 4 MiB, excluding CLIamp and its terminal. CLIamp runs in its own special workspace with configurable top-edge geometry (width, height, and placement) and compact bar controls.",
+  "description": "Quake-style CLIamp: a TUI in its own edge-aligned Hyprland drop-down with configurable position and size, compact bar controls, and measured idle plugin overhead below 4 MiB excluding CLIamp and its terminal.",
   "kinds": ["service", "bar-widget"],
   "entryPoints": {
     "service": "Service.qml",
@@ -13,21 +13,29 @@
   },
   "barWidget": {
     "displayName": "CLIamp quake",
-    "description": "Toggle stock CLIamp and set its alignment and size.",
+    "description": "Toggle stock CLIamp and set its screen edge, position, and size.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "alignment": "Center",
+      "edge": "Top",
+      "placement": "Center",
       "windowWidth": 1200,
       "windowHeight": 600
     },
     "schema": [
       {
-        "key": "alignment",
+        "key": "edge",
         "type": "enum",
-        "label": "Horizontal alignment",
-        "options": ["Left", "Center", "Right"],
+        "label": "Screen edge",
+        "options": ["Top", "Right", "Bottom", "Left"],
+        "defaultValue": "Top"
+      },
+      {
+        "key": "placement",
+        "type": "enum",
+        "label": "Edge position",
+        "options": ["Start", "Center", "End"],
         "defaultValue": "Center"
       },
       {

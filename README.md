@@ -6,18 +6,19 @@ with measured idle plugin overhead below 4 MiB, excluding CLIamp and its termina
 
 [![CLIamp drop-down and window controls](preview.png)][demo]
 
-[Watch the demo][demo] — changing alignment, resizing, and showing or hiding the
+[Watch the demo][demo] — changing position, resizing, and showing or hiding the
 player. The key and mouse overlay in the video is a separate tool.
 
 ## Use
 
 - **Left-click** the lightning bolt to show or hide CLIamp.
-- **Right-click** to set Left, Center, or Right alignment and adjust its size.
+- **Right-click** to choose a screen edge, position the player along it, and
+  adjust its size.
 - Size arrows resize immediately in 50 px steps. Typed values apply on **Enter**
   or when you click elsewhere in the panel.
 - Select **Launch keybinding** to edit your shortcut in Omarchy's editor.
 
-The default size is **1200 x 600**, centered below the bar. Larger sizes fit
+The default size is **1200 x 600**, centered on the top edge. Larger sizes fit
 within the available screen space. Regular CLIamp windows are unaffected.
 
 Your existing CLIamp music shortcut works with the drop-down. Omarchy's default
