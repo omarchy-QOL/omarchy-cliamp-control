@@ -18,7 +18,8 @@ TestCase {
     })
     compare(Settings.dimension("850", 1200), 850)
     compare(Settings.dimension(0, 1200), 1200)
-    compare(Settings.dimension(100001, 1200), 1200)
+    compare(Settings.dimension(99999, 1200), 99999)
+    compare(Settings.dimension(100000, 1200), 1200)
   }
 
   function test_inlineEntry() {

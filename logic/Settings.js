@@ -2,7 +2,7 @@
 
 function dimension(value, defaultValue) {
   const number = Number(value)
-  return Number.isInteger(number) && number >= 1 && number <= 100000
+  return Number.isInteger(number) && number >= 1 && number <= 99999
     ? number : defaultValue
 }
 

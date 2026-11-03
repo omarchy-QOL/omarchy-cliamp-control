@@ -35,7 +35,7 @@
         "type": "integer",
         "label": "Window width",
         "min": 1,
-        "max": 100000,
+        "max": 99999,
         "step": 50,
         "defaultValue": 1200
       },
@@ -44,7 +44,7 @@
         "type": "integer",
         "label": "Window height",
         "min": 1,
-        "max": 100000,
+        "max": 99999,
         "step": 50,
         "defaultValue": 600
       }
