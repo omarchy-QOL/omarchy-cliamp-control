@@ -197,6 +197,10 @@ Panel {
           }
         }
 
+        PanelSeparator {
+          foreground: root.foreground
+        }
+
         MenuRow {
           label: "Horizontal alignment"
           value: root.alignment
