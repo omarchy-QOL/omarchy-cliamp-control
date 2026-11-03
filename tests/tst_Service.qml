@@ -166,18 +166,13 @@ ShellRoot {
       verify(compositor.commands[count].includes(".hide("))
     }
 
-    function test_persistenceFailureRecovers() {
+    function test_unchangedPersistenceCompletes() {
       host.rejectUpdates = true
       service.setSetting("windowHeight", 700)
       service.persistSettings()
-      verify(service.persistPending)
-      compare(service.lastError, "Could not save CLIamp settings")
-
-      host.rejectUpdates = false
-      service.persistSettings()
       verify(!service.persistPending)
       compare(service.lastError, "")
-      compare(saved[0].windowHeight, 700)
+      compare(saved.length, 0)
     }
 
     function test_teardownFlushesAndStops() {

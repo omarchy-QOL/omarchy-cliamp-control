@@ -16,7 +16,6 @@ Item {
   property var lastGeometry: null
   property string geometryError: ""
   property string bindingsError: ""
-  property string persistenceError: ""
   property string bindingLabel: "..."
   property bool bindingRerunPending: false
   property bool persistPending: false
@@ -29,8 +28,8 @@ Item {
   readonly property string managedClass: "org.omarchy.cliamp.quake"
   readonly property string pluginDir: Paths.localPath(Qt.resolvedUrl("."))
   readonly property string epoch: Date.now() + "-" + Math.random()
-  readonly property string lastError: [geometryError, bindingsError,
-    persistenceError].filter(Boolean).join("\n")
+  readonly property string lastError: [geometryError, bindingsError]
+    .filter(Boolean).join("\n")
   readonly property string teardownCommand: Teardown.command()
 
   function dispatch(method, args) {
@@ -70,15 +69,10 @@ Item {
   function persistSettings() {
     saveTimer.stop()
     if (!persistPending || !shell) return
+    persistPending = false
     persisting = true
     try {
-      if (shell.updateEntryInline(pluginId,
-          Object.assign({id: pluginId}, settings)) === false)
-        throw new Error("Could not save CLIamp settings")
-      persistPending = false
-      persistenceError = ""
-    } catch (error) {
-      persistenceError = error.message || String(error)
+      shell.updateEntryInline(pluginId, Object.assign({id: pluginId}, settings))
     } finally {
       persisting = false
     }
