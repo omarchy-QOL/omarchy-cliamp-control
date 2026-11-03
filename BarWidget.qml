@@ -204,6 +204,10 @@ Panel {
 
       TapHandler {
         onTapped: function(point) {
+          if (dimRow.containsPoint(keyCatcher, point.position)) {
+            root.toggleDimming()
+            return
+          }
           if (!widthRow.containsField(keyCatcher, point.position)
               && !heightRow.containsField(keyCatcher, point.position))
             root.commitFields()
@@ -305,6 +309,7 @@ Panel {
         }
 
         ToggleRow {
+          id: dimRow
           objectName: "dimRow"
           label: "Dim background"
           checked: root.dimBackground
@@ -412,18 +417,12 @@ Panel {
     signal toggled()
     signal hovered(bool isHovered)
 
+    function containsPoint(item, point) {
+      return row.contains(row.mapFromItem(item, point.x, point.y))
+    }
+
     width: parent ? parent.width : implicitWidth
     implicitHeight: Style.space(24)
-
-    MouseArea {
-      id: mouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onEntered: row.hovered(true)
-      onExited: row.hovered(false)
-      onClicked: row.toggled()
-    }
 
     RowLayout {
       anchors.fill: parent
@@ -448,17 +447,21 @@ Panel {
           anchors.centerIn: parent
           trackHeight: Style.space(16)
           checked: row.checked
+          interactive: false
           cursorRing: false
           foreground: root.foreground
-          onHovered: function(isHovered) { row.hovered(isHovered) }
-          onToggled: row.toggled()
         }
       }
     }
 
+    HoverHandler {
+      id: hover
+      cursorShape: Qt.PointingHandCursor
+      onHoveredChanged: row.hovered(hovered)
+    }
+
     PanelToolTip {
-      visible: row.tooltipText !== ""
-        && (mouse.containsMouse || toggle.containsMouse)
+      visible: row.tooltipText !== "" && hover.hovered
       text: row.tooltipText
       fontFamily: root.fontFamily
     }
