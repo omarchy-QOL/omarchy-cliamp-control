@@ -32,10 +32,9 @@ Panel {
     Qt.resolvedUrl("open-keybindings.sh"))
   readonly property int keybindingIndex: 3
   readonly property int settingsCount: 4
-  readonly property string tooltip: leftAlignedTooltip([
-    "CLIamp",
-    "Left click:  toggle",
-    "Right click: window settings"
+  readonly property string tooltip: actionTooltip("CLIamp", [
+    ["Left click:", "toggle"],
+    ["Right click:", "window settings"]
   ])
   readonly property string clampSummary: {
     const result = geometryService ? geometryService.lastGeometry : null
@@ -46,13 +45,18 @@ Panel {
 
   }
 
-  function leftAlignedTooltip(lines) {
-    const width = Math.max.apply(null, lines.map(function(line) {
-      return line.length
+  function actionTooltip(title, rows) {
+    const labelWidth = Math.max.apply(null, rows.map(function(row) {
+      return row[0].length
     }))
-    return lines.map(function(line) {
-      return line.padEnd(width, "\u00a0")
-    }).join("\n")
+    const valueWidth = Math.max.apply(null, rows.map(function(row) {
+      return row[1].length
+    }))
+    const width = labelWidth + valueWidth + 2
+    return [title.padEnd(width, "\u00a0")].concat(rows.map(function(row) {
+      return row[0].padEnd(labelWidth, "\u00a0") + "\u00a0\u00a0"
+        + row[1].padStart(valueWidth, "\u00a0")
+    })).join("\n")
   }
 
   function nextAlignment(direction) {
