@@ -21,9 +21,8 @@ readonly DISPATCH_FAIL_FILE="$TEMP_ROOT/dispatch-fail"
 mkdir -p "$MOCK_BIN"
 
 teardown_command="$({
-  sed -n \
-    '/readonly property string teardownCommand: \[/,/  ].join("\\n")/p' \
-    "$PLUGIN_ROOT/Service.qml" |
+  sed -n '/^  return \[$/,/^  \].join("\\n")/p' \
+    "$PLUGIN_ROOT/logic/Teardown.js" |
     sed -n 's/^[[:space:]]*\(".*"\),\{0,1\}$/\1/p' |
     jq -Rr fromjson
 })"
@@ -31,6 +30,8 @@ readonly teardown_command
 
 [[ -n $teardown_command ]]
 bash -n <<<"$teardown_command"
+grep -Fq 'readonly property string teardownCommand: Teardown.command()' \
+  "$PLUGIN_ROOT/Service.qml"
 grep -Fq 'Component.onDestruction: root.teardown()' \
   "$PLUGIN_ROOT/Service.qml"
 

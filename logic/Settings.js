@@ -1,7 +1,7 @@
 .pragma library
 
 function dimension(value, defaultValue) {
-  var number = Number(value)
+  const number = Number(value)
   return Number.isInteger(number) && number >= 1 && number <= 100000
     ? number : defaultValue
 }
@@ -16,8 +16,8 @@ function normalize(entry) {
 }
 
 function findEntry(barConfig, id) {
-  var layout = barConfig.layout || {}
-  var entries = [].concat(layout.left || [], layout.center || [],
+  const layout = barConfig.layout || {}
+  const entries = [].concat(layout.left || [], layout.center || [],
     layout.right || [])
   return entries.find(function(entry) { return entry.id === id }) || {}
 }

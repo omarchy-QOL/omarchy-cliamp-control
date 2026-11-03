@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
@@ -39,7 +38,7 @@ Panel {
     "Right click: window settings"
   ])
   readonly property string clampSummary: {
-    var result = geometryService ? geometryService.lastGeometry : null
+    const result = geometryService ? geometryService.lastGeometry : null
     if (!result || !result.actual || !result.requested) return ""
     if (result.actual.width === result.requested.width
         && result.actual.height === result.requested.height) return ""
@@ -48,7 +47,7 @@ Panel {
   }
 
   function leftAlignedTooltip(lines) {
-    var width = Math.max.apply(null, lines.map(function(line) {
+    const width = Math.max.apply(null, lines.map(function(line) {
       return line.length
     }))
     return lines.map(function(line) {
@@ -57,7 +56,7 @@ Panel {
   }
 
   function nextAlignment(direction) {
-    var values = ["Left", "Center", "Right"]
+    const values = ["Left", "Center", "Right"]
     return values[(values.indexOf(alignment) + (direction || 1)
       + values.length) % values.length]
   }
@@ -79,7 +78,7 @@ Panel {
 
   function launchKeybindings() {
     close()
-    Quickshell.execDetached(["bash", keybindingsScript])
+    if (geometryService) geometryService.launchKeybindings(keybindingsScript)
   }
 
   function cycleAlignment(direction) {
@@ -123,12 +122,11 @@ Panel {
     TapHandler {
       acceptedButtons: Qt.LeftButton | Qt.RightButton
       onPressedChanged: if (pressed && root.geometryService)
-        root.pressContext = root.geometryService.contextFor(
-          button.QsWindow.window.screen)
+        root.pressContext = root.geometryService.contextFor(popup.screen)
     }
     onPressed: function(buttonCode) {
-      var context = root.pressContext || (root.geometryService
-        ? root.geometryService.contextFor(button.QsWindow.window.screen) : null)
+      const context = root.pressContext || (root.geometryService
+        ? root.geometryService.contextFor(popup.screen) : null)
       root.pressContext = null
       if (buttonCode === Qt.LeftButton) root.launchCliamp(context)
       else if (buttonCode === Qt.RightButton) root.toggle()
@@ -159,7 +157,7 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
       onTextKey: function(text) {
-        var key = String(text).toLowerCase()
+        const key = String(text).toLowerCase()
         if (key === "a") root.cycleAlignment()
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()

@@ -22,9 +22,9 @@ TestCase {
   }
 
   function test_inlineEntry() {
-    var entry = { id: "cliamp", windowWidth: 850 }
-    for (var section of ["left", "center", "right"]) {
-      var layout = { left: ["clock"] }
+    const entry = { id: "cliamp", windowWidth: 850 }
+    for (const section of ["left", "center", "right"]) {
+      const layout = { left: ["clock"] }
       layout[section] = [entry]
       compare(Settings.findEntry({layout: layout}, "cliamp"), entry)
     }

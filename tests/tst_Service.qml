@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtTest
 import Quickshell
@@ -18,8 +20,14 @@ ShellRoot {
       id: host
       readonly property string pluginId: "io.github.ilyazar.cliamp"
       property var barConfig: ({})
-      property var _updateSettings: null
-      function updateEntryInline(id, entry) { return _updateSettings(id, entry) }
+      property bool rejectUpdates: false
+      property var widget: null
+      function updateEntryInline(id, entry) {
+        if (rejectUpdates) return false
+        if (widget) widget.settings = entry
+        testCase.saved.push(entry)
+        return true
+      }
       function serviceFor(id) { return testCase.service }
     }
 
@@ -43,19 +51,21 @@ ShellRoot {
     }
 
     function create(path, properties) {
-      var component = Qt.createComponent("file://" + path)
+      const component = Qt.createComponent("file://" + path)
       if (component.status !== Component.Ready) console.error(component.errorString())
       compare(component.status, Component.Ready, component.errorString())
       return component.createObject(testCase, properties || {})
     }
 
+    // qmllint disable shadow
     function init() {
       saved = []
       compositor.commands = []
+      host.rejectUpdates = false
+      host.widget = null
       host.barConfig = {layout: {right: [{
         id: host.pluginId, alignment: "Right", windowWidth: 850, windowHeight: 425
       }]}}
-      host._updateSettings = function(id, entry) { saved.push(entry); return true }
       service = create(Quickshell.env("CLIAMP_SOURCE") + "/Service.qml",
         {compositor: compositor})
       service.shell = host
@@ -65,6 +75,7 @@ ShellRoot {
       if (qtest_results.failed) console.error("Failed:", qtest_results.functionName)
       service.destroy()
     }
+    // qmllint enable shadow
 
     function result(status, values, revision) {
       return ["cliamp", service.epoch,
@@ -74,7 +85,7 @@ ShellRoot {
 
     function test_immediateCommandsAndStaleSnapshots() {
       compare(service.settings.windowWidth, 850)
-      var count = compositor.commands.length
+      const count = compositor.commands.length
       service.setSetting("windowWidth", 900)
       compare(service.settings.windowWidth, 900)
       compare(compositor.commands.length, count + 1)
@@ -100,7 +111,7 @@ ShellRoot {
       service.acceptGeometry(result("error", ["geometry failed"]))
       service.acceptBindingResult(1, "", "binding failed")
       compare(service.lastError, "geometry failed\nbinding failed")
-      service.acceptGeometry(result("geometry", [0,26,850,425,0,26,850,425]))
+      service.acceptGeometry(result("geometry", [850,425]))
       compare(service.lastError, "binding failed")
       compare(service.lastGeometry.actual.width, 850)
       service.acceptBindingResult(0, '["F12"]', "")
@@ -108,7 +119,9 @@ ShellRoot {
       service.setSetting("windowWidth", 900)
       service.acceptGeometry(result("error", ["stale failure"], 0))
       compare(service.lastError, "")
-      service.acceptGeometry(result("geometry", [0,26,900,425,0,26,800,425]))
+      service.acceptGeometry(result("geometry", [800,425]))
+      compare(service.lastGeometry.actual.width, 800)
+      service.acceptGeometry(result("geometry", [800]))
       verify(service.geometryError !== "")
       service.acceptGeometry(result("absent"))
       compare(service.lastGeometry, null)
@@ -116,16 +129,11 @@ ShellRoot {
     }
 
     function test_widgetUsesDesiredState() {
-      var bar = barFixture.createObject(testCase)
-      var widget = create(Quickshell.env("CLIAMP_SOURCE") + "/BarWidget.qml")
+      const bar = barFixture.createObject(testCase)
+      const widget = create(Quickshell.env("CLIAMP_SOURCE") + "/BarWidget.qml")
       widget.bar = bar
       widget.settings = host.barConfig.layout.right[0]
-      host._updateSettings = function(id, entry) {
-        host.barConfig = {layout: {right: [widget.settings]}}
-        widget.settings = entry
-        saved.push(entry)
-        return true
-      }
+      host.widget = widget
       widget.cycleAlignment()
       compare(widget.alignment, "Left")
       widget.cycleAlignment()
@@ -142,12 +150,33 @@ ShellRoot {
       bar.destroy()
     }
 
+    function test_keybindingLaunchHidesPlayer() {
+      const count = compositor.commands.length
+      service.launchKeybindings("/bin/true")
+      compare(compositor.commands.length, count + 1)
+      verify(compositor.commands[count].includes(".hide("))
+    }
+
+    function test_persistenceFailureRecovers() {
+      host.rejectUpdates = true
+      service.setSetting("windowHeight", 700)
+      service.persistSettings()
+      verify(service.persistPending)
+      compare(service.lastError, "Could not save CLIamp settings")
+
+      host.rejectUpdates = false
+      service.persistSettings()
+      verify(!service.persistPending)
+      compare(service.lastError, "")
+      compare(saved[0].windowHeight, 700)
+    }
+
     function test_teardownFlushesAndStops() {
       service.setSetting("windowHeight", 700)
       service.teardown()
       compare(saved[0].windowHeight, 700)
       verify(service.tearingDown)
-      var count = compositor.commands.length
+      const count = compositor.commands.length
       service.togglePlayer({monitor: "TEST", workspace: 2})
       compare(compositor.commands.length, count)
     }

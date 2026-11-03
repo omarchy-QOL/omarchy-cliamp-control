@@ -5,16 +5,18 @@ import Quickshell.Io
 import "logic/Settings.js" as Settings
 import "logic/Paths.js" as Paths
 import "logic/Commands.js" as Commands
+import "logic/Teardown.js" as Teardown
 
 Item {
   id: root
 
-  property QtObject shell: null
-  property QtObject compositor: Hyprland
+  property var shell: null
+  property var compositor: Hyprland
   property var settings: Settings.normalize({})
   property var lastGeometry: null
   property string geometryError: ""
   property string bindingsError: ""
+  property string persistenceError: ""
   property string bindingLabel: "..."
   property bool bindingRerunPending: false
   property bool persistPending: false
@@ -27,57 +29,9 @@ Item {
   readonly property string managedClass: "org.omarchy.cliamp.quake"
   readonly property string pluginDir: Paths.localPath(Qt.resolvedUrl("."))
   readonly property string epoch: Date.now() + "-" + Math.random()
-  readonly property string lastError: [geometryError, bindingsError]
-    .filter(function(error) { return error !== "" }).join("\n")
-  readonly property string teardownCommand: [
-    "plugin_dir=\"$1\"",
-    "plugin_id=\"$2\"",
-    "managed_class=\"$3\"",
-    "client_filter='.[] | select(.class == $class'",
-    "client_filter+=' or .initialClass == $class) | .address'",
-    "poll_attempts=\"$4\"",
-    "poll_interval=\"$5\"",
-    "enabled_attempts=\"$6\"",
-    "enabled_interval=\"$7\"",
-    "sleep \"$enabled_interval\"",
-    "plugin_state=\"absent\"",
-    "if [[ -e $plugin_dir ]]; then",
-    "  plugin_state=\"unknown\"",
-    "  plugin_filter='[.[] | select(.id == $id)]'",
-    "  plugin_filter+=' | if length != 1 then \"unknown\"'",
-    "  plugin_filter+=' elif .[0].enabled == true then \"enabled\"'",
-    "  plugin_filter+=' elif .[0].enabled == false then \"disabled\"'",
-    "  plugin_filter+=' else \"unknown\" end'",
-    "  for ((attempt = 0; attempt < enabled_attempts; attempt++)); do",
-    "    plugin_json=\"\"",
-    "    if plugin_json=\"$(omarchy plugin list --json 2>/dev/null)\"; then",
-    "      plugin_state=\"$(jq -r --arg id \"$plugin_id\" \\",
-    "        \"$plugin_filter\" <<<\"$plugin_json\" 2>/dev/null \\",
-    "        || printf 'unknown')\"",
-    "      [[ $plugin_state == \"enabled\" ]] && exit 0",
-    "      [[ $plugin_state == \"disabled\" ]] && break",
-    "    fi",
-    "    sleep \"$enabled_interval\"",
-    "  done",
-    "  [[ $plugin_state == \"unknown\" && -e $plugin_dir ]] && exit 0",
-    "fi",
-    "hyprctl reload config-only >/dev/null 2>&1 || true",
-    "for ((attempt = 0; attempt < poll_attempts; attempt++)); do",
-    "  clients_json=\"$(hyprctl clients -j 2>/dev/null || printf '[]')\"",
-    "  while IFS= read -r address; do",
-    "    [[ $address =~ ^0x[0-9A-Fa-f]+$ ]] || continue",
-    "    hyprctl dispatch \\",
-    "      \"hl.dsp.window.close({ window = \\\"address:$address\\\" })\" \\",
-    "      >/dev/null 2>&1 || true",
-    "  done < <(",
-    "    jq -r --arg class \"$managed_class\" \\",
-    "      \"$client_filter\" <<<\"$clients_json\" 2>/dev/null || true",
-    "  )",
-    "  sleep \"$poll_interval\"",
-    "done",
-    "hyprctl reload config-only >/dev/null 2>&1 || true"
-  ].join("\n")
-
+  readonly property string lastError: [geometryError, bindingsError,
+    persistenceError].filter(Boolean).join("\n")
+  readonly property string teardownCommand: Teardown.command()
 
   function dispatch(method, args) {
     if (!tearingDown)
@@ -94,7 +48,7 @@ Item {
     if (!entry || (entry.alignment === undefined
         && entry.windowWidth === undefined && entry.windowHeight === undefined))
       return
-    var next = Settings.normalize(entry)
+    const next = Settings.normalize(entry)
     if (JSON.stringify(next) === JSON.stringify(settings)) return
     settings = next
     revision++
@@ -102,7 +56,7 @@ Item {
   }
 
   function setSetting(name, value) {
-    var next = Object.assign({}, settings)
+    let next = Object.assign({}, settings)
     next[name] = value
     next = Settings.normalize(next)
     if (JSON.stringify(next) === JSON.stringify(settings)) return
@@ -116,15 +70,23 @@ Item {
   function persistSettings() {
     saveTimer.stop()
     if (!persistPending || !shell) return
-    persistPending = false
     persisting = true
-    shell.updateEntryInline(pluginId, Object.assign({id: pluginId}, settings))
-    persisting = false
+    try {
+      if (shell.updateEntryInline(pluginId,
+          Object.assign({id: pluginId}, settings)) === false)
+        throw new Error("Could not save CLIamp settings")
+      persistPending = false
+      persistenceError = ""
+    } catch (error) {
+      persistenceError = error.message || String(error)
+    } finally {
+      persisting = false
+    }
   }
 
   function install() {
     if (!shell || tearingDown) return
-    var args = geometryArgs()
+    const args = geometryArgs()
     args.splice(1, 0, pluginDir + "scripts/launch_cliamp.sh")
     dispatch("install", args)
     ready = true
@@ -132,7 +94,7 @@ Item {
   }
 
   function contextFor(screen) {
-    var monitor = compositor.monitorFor(screen)
+    const monitor = compositor.monitorFor(screen)
     return monitor && monitor.activeWorkspace
       ? {monitor: monitor.name, workspace: monitor.activeWorkspace.id} : null
   }
@@ -141,9 +103,14 @@ Item {
     if (ready && context) dispatch("toggle", [context.monitor, context.workspace])
   }
 
+  function launchKeybindings(script) {
+    if (ready) dispatch("hide", [])
+    Qt.callLater(function() { Quickshell.execDetached(["bash", script]) })
+  }
+
   function acceptGeometry(data) {
     if (tearingDown) return
-    var fields = data.split(",")
+    const fields = data.split(",")
     if (fields[0] !== "cliamp" || fields[1] !== epoch
         || Number(fields[2]) !== revision) return
     if (fields[3] === "error") {
@@ -155,19 +122,16 @@ Item {
       lastGeometry = null
       return
     }
-    var values = fields.slice(4).map(Number)
-    if (fields[3] !== "geometry" || values.length !== 8
+    const values = fields.slice(4).map(Number)
+    if (fields[3] !== "geometry" || values.length !== 2
         || !values.every(Number.isFinite)) {
       geometryError = "Invalid CLIamp geometry result"
       return
     }
     lastGeometry = {
       requested: {width: settings.windowWidth, height: settings.windowHeight},
-      actual: {x: values[4], y: values[5], width: values[6], height: values[7]}
+      actual: {width: values[0], height: values[1]}
     }
-    if (values.slice(0, 4).some(function(value, index) {
-      return value !== values[index + 4]
-    })) geometryError = "Hyprland did not accept the requested geometry"
   }
 
   function syncBindings() {
@@ -181,7 +145,7 @@ Item {
     try {
       if (exitCode !== 0)
         throw new Error(errorOutput.trim() || "CLIamp binding sync failed")
-      var labels = JSON.parse(output)
+      const labels = JSON.parse(output)
       if (!Array.isArray(labels) || !labels.every(function(label) {
         return typeof label === "string"
       })) throw new Error("Invalid CLIamp binding result")
@@ -217,8 +181,6 @@ Item {
     function onRawEvent(event) {
       if (event.name === "custom") root.acceptGeometry(event.data)
       else if (event.name === "configreloaded") root.install()
-      else if (["focusedmon", "activespecialv2", "openlayer", "closelayer"]
-          .indexOf(event.name) >= 0 && root.ready) root.dispatch("apply", [])
     }
   }
 
