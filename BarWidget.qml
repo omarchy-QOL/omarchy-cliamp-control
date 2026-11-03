@@ -144,6 +144,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
+    padding: Style.spacing.lg
     contentWidth: popup.fittedContentWidth(Style.space(280))
     contentHeight: popup.fittedContentHeight(content.implicitHeight)
 
@@ -256,24 +257,22 @@ Panel {
     }
   }
 
-  component MenuRow: CursorSurface {
+  component MenuRow: Item {
     id: row
 
     property string label: ""
     property string value: ""
     property string tooltipText: ""
+    property bool hasCursor: false
     signal clicked()
     signal hovered(bool isHovered)
 
     width: parent ? parent.width : implicitWidth
-    implicitHeight: Style.spacing.popupRowHeight
-    foreground: root.foreground
+    implicitHeight: Style.space(24)
 
     RowLayout {
       anchors.fill: parent
-      anchors.leftMargin: Style.spacing.rowPaddingX
-      anchors.rightMargin: Style.spacing.rowPaddingX
-      spacing: Style.space(10)
+      spacing: Style.space(8)
 
       Text {
         text: row.label
@@ -282,18 +281,23 @@ Panel {
         font.pixelSize: Style.font.body
         font.bold: row.hasCursor
         Layout.fillWidth: true
-        Layout.minimumWidth: implicitWidth
         Layout.alignment: Qt.AlignVCenter
       }
 
-      Text {
-        text: row.value
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
-        Layout.alignment: Qt.AlignVCenter
-        Layout.maximumWidth: row.width * 0.52
-        elide: Text.ElideRight
+      CursorSurface {
+        Layout.preferredWidth: Style.space(64)
+        Layout.preferredHeight: Style.space(24)
+        hasCursor: row.hasCursor
+        foreground: root.foreground
+
+        Text {
+          anchors.centerIn: parent
+          text: row.value
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          elide: Text.ElideRight
+        }
       }
     }
 
@@ -331,12 +335,10 @@ Panel {
     }
 
     width: parent ? parent.width : implicitWidth
-    implicitHeight: Style.spacing.controlHeight
+    implicitHeight: Style.space(24)
 
     RowLayout {
       anchors.fill: parent
-      anchors.leftMargin: Style.spacing.rowPaddingX
-      anchors.rightMargin: Style.spacing.rowPaddingX
       spacing: Style.space(8)
 
       Text {
@@ -351,7 +353,10 @@ Panel {
       NumberField {
         id: numberField
         objectName: "numberField"
-        Component.onCompleted: field.live = false
+        Component.onCompleted: {
+          field.live = false
+          field.implicitHeight = Style.space(24)
+        }
         Layout.preferredWidth: fieldWidth
         Layout.alignment: Qt.AlignVCenter
         fieldWidth: Style.space(64)
