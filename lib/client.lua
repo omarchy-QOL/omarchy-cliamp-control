@@ -13,9 +13,7 @@ local function managed_window()
   end
 end
 
-local function sync_dim()
-  local ws = hl.get_workspace(workspace)
-  local undim = ws ~= nil and ws.visible == true and not state.dim_background
+local function set_undim(undim)
   if undim == state.dim_overridden then return end
   if undim then
     state.dim_restore = hl.get_config("decoration.dim_special") or 0
@@ -25,6 +23,27 @@ local function sync_dim()
     state.dim_restore = nil
   end
   state.dim_overridden = undim
+end
+
+-- Hyprland copies dim_special when a special workspace activates, so a visible
+-- workspace must reactivate to show a new value. toggle_special only acts on
+-- the focused monitor; elsewhere the value shows once that monitor has focus.
+local function sync_dim()
+  local ws = hl.get_workspace(workspace)
+  local visible = ws ~= nil and ws.visible == true
+  local undim = visible and not state.dim_background
+  set_undim(undim)
+  if not visible then
+    state.dim_shown = false
+  elseif undim ~= state.dim_shown then
+    local active = hl.get_active_monitor()
+    if active and ws.monitor and active.name == ws.monitor.name then
+      state.dim_shown = undim
+      hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
+      hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
+      hl.exec_scheduled_prop_refresh_immediately()
+    end
+  end
 end
 
 local function report(status, ...)
@@ -127,9 +146,11 @@ end
 
 function M.install(epoch, launcher, revision, edge, placement, width, height,
     dim_background, config_reloaded)
+  -- A config reload leaves Hyprland's copied dim on the visible workspace.
+  local dim_shown = state ~= nil and config_reloaded == 1 and state.dim_shown
   if state then M.stop(state.epoch, config_reloaded) end
   state = {epoch = epoch, launcher = launcher, listeners = {},
-    dim_overridden = false}
+    dim_overridden = false, dim_shown = dim_shown}
   _G.cliamp_control = state
   state.window_rule = hl.window_rule({name = "cliamp-control",
     match = {initial_class = "^org[.]omarchy[.]cliamp[.]quake$"},
@@ -153,6 +174,11 @@ function M.install(epoch, launcher, revision, edge, placement, width, height,
   state.listeners[5] = hl.on("workspace.move_to_monitor", function(ws, monitor)
     if ws and ws.name == workspace then M.apply(monitor) end
   end)
+  -- Hyprland updates the focused monitor only after this event.
+  state.listeners[6] = hl.on("monitor.focused", function()
+    state.focus_timer = hl.timer(function() M.apply() end,
+      {timeout = 1, type = "oneshot"})
+  end)
   M.configure(epoch, revision, edge, placement, width, height,
     dim_background)
 end
@@ -165,6 +191,11 @@ function M.toggle(monitor_name, origin_workspace)
       or not monitor.active_workspace
       or monitor.active_workspace.id ~= origin_workspace) then return end
   M.apply(monitor)
+  local open = monitor.active_special_workspace
+  if not open or open.name ~= workspace then
+    state.dim_shown = not state.dim_background
+    set_undim(state.dim_shown)
+  end
   hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
   hl.exec_scheduled_prop_refresh_immediately()
   local visible = monitor.active_special_workspace

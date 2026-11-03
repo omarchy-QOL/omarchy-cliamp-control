@@ -37,6 +37,12 @@ ShellRoot {
         property QtObject shell: host
         property color barForeground: "white"
         property string fontFamily: "monospace"
+        property string position: "top"
+        property int barSize: 26
+        property var activePopout: null
+        property var clickTargets: []
+        function requestPopout(owner) { activePopout = owner }
+        function releasePopout(owner) { activePopout = null }
       }
     }
 
@@ -158,6 +164,48 @@ ShellRoot {
       compare(service.settings.windowWidth, 700)
       compare(host.barConfig.layout.right[0].windowWidth, 850)
       compare(saved[0].windowWidth, 700)
+      widget.destroy()
+      bar.destroy()
+    }
+
+    function test_realEventsToggleDimming() {
+      const bar = barFixture.createObject(testCase)
+      const widget = create(Quickshell.env("CLIAMP_SOURCE") + "/BarWidget.qml")
+      widget.bar = bar
+      widget.settings = host.barConfig.layout.right[0]
+      host.widget = widget
+      widget.open()
+      const row = findChild(widget, "dimRow")
+      const toggle = findChild(widget, "dimSwitch")
+      verify(row && toggle)
+      tryVerify(function() { return row.Window.window && row.Window.window.visible })
+      waitForRendering(row)
+      verify(widget.dimBackground)
+      verify(toggle.checked)
+
+      const commandCount = compositor.commands.length
+      mouseClick(toggle)
+      verify(!widget.dimBackground)
+      verify(!toggle.checked)
+      compare(compositor.commands.length, commandCount + 1)
+      verify(compositor.commands[commandCount].includes(".configure("))
+      tryVerify(function() { return saved.length === 1 })
+      compare(saved[0].dimBackground, false)
+
+      mouseClick(row, 4, row.height / 2)
+      verify(widget.dimBackground)
+      verify(toggle.checked)
+      tryVerify(function() { return saved.length === 2 })
+      compare(saved[1].dimBackground, true)
+
+      const keyCatcher = row.parent.parent
+      widget.selectedIndex = 4
+      keyCatcher.activateRequested()
+      verify(!widget.dimBackground)
+      keyCatcher.textKey("d")
+      verify(widget.dimBackground)
+
+      widget.close()
       widget.destroy()
       bar.destroy()
     }

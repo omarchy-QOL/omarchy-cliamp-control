@@ -10,6 +10,8 @@ local ordinary = {class = "org.omarchy.cliamp", mapped = true}
 local windows, actions, events, listeners, launches, rules =
   {ordinary, player}, {}, {}, {}, {}, {}
 local dim_special = 0.6
+-- Hyprland renders a copy of dim_special taken when the workspace activates.
+local rendered_dim = 0
 local function action(kind, args) return {kind = kind, args = args} end
 local function handle() return {set_enabled = function(self, enabled) self.enabled = enabled end} end
 hl = {
@@ -50,6 +52,7 @@ hl = {
     if value.kind == "toggle" then
       special.visible = not special.visible
       special.monitor = monitor
+      rendered_dim = special.visible and dim_special or 0
       monitor.active_special_workspace = special.visible and special or nil
     end
   end,
@@ -119,18 +122,54 @@ assert(#actions == count, "a changed originating workspace must cancel the click
 client.toggle("portrait", 2)
 assert(#actions == count, "a changed monitor must cancel the click")
 client.toggle("landscape", 2)
-assert(special.visible and dim_special == 0.6)
+assert(special.visible and dim_special == 0.6 and rendered_dim == 0.6)
 client.configure("test", 8, "Left", "Center", 850, 625, 0)
 assert(dim_special == 0, "disabled dimming was not applied")
+assert(special.visible and rendered_dim == 0,
+  "disabling dimming did not reach the visible workspace")
 client.hide()
 assert(not special.visible and dim_special == 0.6,
   "the original dim value was not restored")
 client.toggle()
 assert(special.visible and dim_special == 0)
+assert(rendered_dim == 0, "the workspace activated before dimming was disabled")
+client.configure("test", 9, "Left", "Center", 850, 625, 1)
+assert(special.visible and dim_special == 0.6 and rendered_dim == 0.6,
+  "enabling dimming did not reach the visible workspace")
+client.configure("test", 10, "Left", "Center", 850, 625, 0)
+assert(special.visible and dim_special == 0 and rendered_dim == 0)
+count = #actions
+client.configure("test", 11, "Top", "Center", 850, 625, 0)
+assert(#actions == count, "only a dim change may reactivate the workspace")
+
+local home = monitor
+monitor = {name = "elsewhere", id = 2, active_workspace = {id = 3}}
+client.configure("test", 12, "Top", "Center", 850, 625, 1)
+assert(special.monitor == home, "a dim change must not move the workspace")
+assert(dim_special == 0.6 and rendered_dim == 0)
+listeners["monitor.focused"](home)
+assert(special.monitor == home and rendered_dim == 0,
+  "the focus event fires before the focused monitor changes")
+monitor = home
+_G.cliamp_control.focus_timer.callback()
+assert(special.monitor == home and rendered_dim == 0.6,
+  "focusing the monitor did not catch up")
+
+client.configure("test", 13, "Top", "Center", 850, 625, 0)
+dim_special = 0.35
+count = #actions
+client.install("test", "/tmp/player's launcher.sh", 14,
+  "Top", "Center", 850, 625, 0, 1)
+assert(dim_special == 0 and rendered_dim == 0 and #actions == count,
+  "a config reload must not replay the workspace")
+client.hide()
+assert(dim_special == 0.35, "a reloaded user value was not restored")
+client.toggle()
+assert(special.visible and dim_special == 0 and rendered_dim == 0)
 special.visible = false
 monitor.active_special_workspace = {name = "special:other"}
 listeners["workspace.special_active"]({name = "special:other"}, monitor)
-assert(dim_special == 0.6, "another special workspace did not restore dimming")
+assert(dim_special == 0.35, "another special workspace did not restore dimming")
 monitor.active_special_workspace = nil
 
 windows = {ordinary}
@@ -153,5 +192,5 @@ client.stop("wrong-instance")
 assert(_G.cliamp_control)
 client.stop("test")
 assert(not _G.cliamp_control and next(listeners) == nil)
-assert(dim_special == 0.6, "stop did not restore the original dim value")
+assert(dim_special == 0.35, "stop did not restore the original dim value")
 print("ok - workspace gaps, monitor ownership, and guarded toggles")

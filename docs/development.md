@@ -12,6 +12,12 @@ It can temporarily override Hyprland's global special-workspace dim value while
 visible and restores the exact previous value when hidden or stopped. Ordinary
 CLIamp windows use a different app ID.
 
+Hyprland renders a copy of `dim_special` taken when a special workspace
+activates, so `hyprctl getoption` does not show what is on screen. The override
+is set before opening, and changing it while visible reactivates the workspace,
+which replays the slide. A workspace on an unfocused monitor catches up when
+that monitor gains focus, because `toggle_special` only acts on the focused one.
+
 `lib/bindings.lua` evaluates the configured Lua bindings with a recording
 adapter because Hyprland exposes opaque dispatcher IDs. It recognizes CLIamp
 launch commands and preserves their binding options. The source configuration
@@ -53,4 +59,8 @@ correctness.
 Live checks cover typed and stepped dimensions, every edge and position,
 workspace changes, rotated/scaled monitors, popup dismissal, reloads, and
 disable/removal. Preserve the user's configuration and keep interactive tests
-on the dedicated test host.
+on the dedicated test host. Check dimming by comparing screen pixels.
+
+The shell's plugin watcher does not follow a symlinked local plugin. Run
+`omarchy restart shell` after editing one; `omarchy-shell shell rescanPlugins`
+can keep serving the previous version.

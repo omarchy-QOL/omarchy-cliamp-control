@@ -135,6 +135,11 @@ Panel {
     function onRawEvent(event) {
       if (["workspacev2", "focusedmon"].indexOf(event.name) >= 0)
         root.close()
+      // Activating a special workspace moves keyboard focus to its window.
+      else if (event.name === "activespecial" && root.opened) {
+        popup.focusPrimed = false
+        popup.beginFocusPrime()
+      }
     }
   }
 
@@ -204,10 +209,6 @@ Panel {
 
       TapHandler {
         onTapped: function(point) {
-          if (dimRow.containsPoint(keyCatcher, point.position)) {
-            root.toggleDimming()
-            return
-          }
           if (!widthRow.containsField(keyCatcher, point.position)
               && !heightRow.containsField(keyCatcher, point.position))
             root.commitFields()
@@ -309,7 +310,6 @@ Panel {
         }
 
         ToggleRow {
-          id: dimRow
           objectName: "dimRow"
           label: "Dim background"
           checked: root.dimBackground
@@ -417,10 +417,6 @@ Panel {
     signal toggled()
     signal hovered(bool isHovered)
 
-    function containsPoint(item, point) {
-      return row.contains(row.mapFromItem(item, point.x, point.y))
-    }
-
     width: parent ? parent.width : implicitWidth
     implicitHeight: Style.space(24)
 
@@ -454,14 +450,18 @@ Panel {
       }
     }
 
-    HoverHandler {
-      id: hover
+    MouseArea {
+      id: mouse
+      anchors.fill: parent
+      hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onHoveredChanged: row.hovered(hovered)
+      onEntered: row.hovered(true)
+      onExited: row.hovered(false)
+      onClicked: row.toggled()
     }
 
     PanelToolTip {
-      visible: row.tooltipText !== "" && hover.hovered
+      visible: row.tooltipText !== "" && mouse.containsMouse
       text: row.tooltipText
       fontFamily: root.fontFamily
     }
