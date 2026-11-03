@@ -27,6 +27,7 @@ Panel {
   readonly property color foreground: bar
     ? bar.barForeground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.5)
+  readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
@@ -328,11 +329,17 @@ Panel {
     required property string label
     required property int value
     property bool hasCursor: false
+    readonly property var input: numberField.field.contentItem
     readonly property bool fieldActive: numberField.field.activeFocus
+    readonly property bool invalid: fieldActive
+      && (!input.acceptableInput || !/^[0-9]+$/.test(input.text))
     signal modified(int value)
     signal hovered(bool isHovered)
 
-    function focusField() { numberField.field.forceActiveFocus() }
+    function focusField() {
+      numberField.field.forceActiveFocus()
+      input.selectAll()
+    }
     function containsField(item, point) {
       return numberField.field.contains(numberField.field.mapFromItem(
         item, point.x, point.y))
@@ -347,7 +354,7 @@ Panel {
 
       Text {
         text: dimension.label
-        color: root.foreground
+        color: dimension.invalid ? root.urgent : root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         font.bold: dimension.hasCursor
@@ -368,10 +375,26 @@ Panel {
         to: 9999
         stepSize: 50
         value: dimension.value
-        foreground: root.foreground
+        foreground: dimension.invalid ? root.urgent : root.foreground
         fontFamily: root.fontFamily
         hasCursor: dimension.hasCursor && !dimension.fieldActive
         onModified: function(value) { dimension.modified(value) }
+
+        PanelToolTip {
+          visible: dimension.invalid
+          text: "Enter a whole number from 1 to 9,999."
+          fontFamily: root.fontFamily
+        }
+      }
+    }
+
+    Shortcut {
+      sequence: "Escape"
+      context: Qt.ApplicationShortcut
+      enabled: dimension.input && dimension.input.activeFocus
+      onActivated: {
+        dimension.input.text = String(dimension.value)
+        keyCatcher.forceActiveFocus()
       }
     }
 
