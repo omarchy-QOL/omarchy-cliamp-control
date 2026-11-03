@@ -199,6 +199,7 @@ Panel {
         MenuRow {
           label: "Horizontal alignment"
           value: root.alignment
+          tooltipText: "Alignment sets horizontal placement."
           hasCursor: root.selectedIndex === 0
           onHovered: function(on) { if (on) root.selectedIndex = 0 }
           onClicked: root.cycleAlignment()
@@ -251,30 +252,6 @@ Panel {
           font.pixelSize: Style.font.caption
           wrapMode: Text.WordWrap
         }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(2)
-
-          Text {
-            width: parent.width
-            text: "Note:"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            font.bold: true
-          }
-
-          Text {
-            width: parent.width
-            text: "Alignment sets horizontal placement.\n"
-              + "The top edge avoids reserved areas."
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
-          }
-        }
       }
     }
   }
@@ -284,6 +261,7 @@ Panel {
 
     property string label: ""
     property string value: ""
+    property string tooltipText: ""
     signal clicked()
     signal hovered(bool isHovered)
 
@@ -320,12 +298,19 @@ Panel {
     }
 
     MouseArea {
+      id: mouse
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onEntered: row.hovered(true)
       onExited: row.hovered(false)
       onClicked: row.clicked()
+    }
+
+    PanelToolTip {
+      visible: row.tooltipText !== "" && mouse.containsMouse
+      text: row.tooltipText
+      fontFamily: root.fontFamily
     }
   }
 
