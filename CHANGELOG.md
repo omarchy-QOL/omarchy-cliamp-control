@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-11-07
+
+- Fix your shortcut opening CLIamp as a regular window when your Hyprland
+  config loops over windows, layers, or monitors while it loads. The binding
+  scan no longer hangs and keeps a CPU core busy, and it gives up after 10
+  seconds instead of running forever.
+
 ## 0.2.0 - 2026-11-03
 
 - Open the drop-down from any screen edge, at the start, center, or end of it.
