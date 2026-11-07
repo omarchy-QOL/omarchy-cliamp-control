@@ -35,6 +35,7 @@ o.bind("SUPER + H", "Help", "cliamp --help")
 o.bind("SUPER + K", "Stop", "pkill cliamp")
 o.bind("SUPER + O", "Other", "omarchy-launch-tui cliamp-other")
 o.bind("SUPER + E", "Example", "echo omarchy-launch-tui cliamp")
+for _ in ipairs(hl.get_layers()) do end
 LUA
 
 cat >"$TEMP_ROOT/bin/hyprctl" <<'MOCK'

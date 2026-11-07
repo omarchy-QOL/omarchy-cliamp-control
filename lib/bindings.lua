@@ -7,9 +7,14 @@ local boolean_options = {
   "drag", "allow_input_capture",
 }
 
+-- Integer keys stay nil so ipairs over a stubbed query, such as
+-- hl.get_layers(), terminates instead of spinning forever.
 local noop
 noop = setmetatable({}, {
-  __index = function() return noop end,
+  __index = function(_, key)
+    if type(key) == "number" then return nil end
+    return noop
+  end,
   __call = function() return noop end,
 })
 
