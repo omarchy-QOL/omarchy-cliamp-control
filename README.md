@@ -2,12 +2,13 @@
 
 A Quake-style drop-down for CLIamp. Open it from the bar or your music shortcut,
 then choose its screen edge, position, and size. Under 1,200 lines of core code,
-with measured idle plugin overhead below 4 MiB, excluding CLIamp and its terminal.
+with measured idle plugin overhead below 4 MiB, excluding CLIamp and its
+terminal.
 
 [![CLIamp drop-down and window controls](preview.png)][demo]
 
-[Watch the demo][demo] — changing position, resizing, and showing or hiding the
-player. The key and mouse overlay in the video is a separate tool.
+[Watch the demo][demo] which shows: changing position, resizing, and showing or
+hiding the player. The key and mouse overlay in the video is a separate tool.
 
 ## Use
 
@@ -35,8 +36,7 @@ Requires Omarchy Quattro, Hyprland **0.56.2 or newer**, and CLIamp. The helpers
 use Bash, jq, Lua, and hyprctl, available in a standard Omarchy installation.
 
 ```bash
-omarchy plugin add \
-  https://github.com/omarchy-QOL/omarchy-cliamp-control.git --enable
+omarchy plugin add https://github.com/omarchy-QOL/omarchy-cliamp-control.git --enable
 ```
 
 No extra setup is needed. CLIamp opens exactly as it would in a terminal, with
