@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-11-21
 
 - Add **Keep open**. CLIamp then stays on screen as a pinned floating window
   while you work in other windows, and Alt+Tab or a click reaches them. Your
