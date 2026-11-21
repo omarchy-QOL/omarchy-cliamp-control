@@ -14,12 +14,17 @@ player. The key and mouse overlay in the video is a separate tool.
 - **Left-click** the lightning bolt to show or hide CLIamp.
 - **Right-click** to choose a screen edge, position and resize the player, or
   toggle background dimming.
+- Turn on **Keep open** to leave CLIamp on screen while you work in other
+  windows. It then floats above them on every workspace, and Alt+Tab or a click
+  moves focus between it and your other windows. Your shortcut shows or hides
+  it, whichever window has focus.
 - Size arrows resize immediately in 50 px steps. Typed values apply on **Enter**
   or when you click elsewhere in the panel.
 - Select **Launch keybinding** to edit your shortcut in Omarchy's editor.
 
 The default size is **1200 x 600**, centered on the top edge. Larger sizes fit
 within the available screen space. Regular CLIamp windows are unaffected.
+Background dimming applies only to the drop-down, not while **Keep open** is on.
 
 Your existing CLIamp music shortcut works with the drop-down. Omarchy's default
 is **Super+Shift+Alt+M**; the demo uses a custom **F12** binding.

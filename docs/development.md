@@ -12,6 +12,12 @@ It can temporarily override Hyprland's global special-workspace dim value while
 visible and restores the exact previous value when hidden or stopped. Ordinary
 CLIamp windows use a different app ID.
 
+With `keepOpen`, CLIamp is a pinned float on the regular workspace instead,
+because Hyprland hides a special workspace as soon as a regular window takes
+focus, and `cycle_next` stays within the focused workspace. Hiding unpins it
+and returns it, tiled, to the special workspace, so either mode can resume.
+Changing the mode hides CLIamp; the next toggle shows it in the new mode.
+
 Hyprland renders a copy of `dim_special` taken when a special workspace
 activates, so `hyprctl getoption` does not show what is on screen. The override
 is set before opening, and changing it while visible reactivates the workspace,

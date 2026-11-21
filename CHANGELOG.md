@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add **Keep open**. CLIamp then stays on screen as a pinned floating window
+  while you work in other windows, and Alt+Tab or a click reaches them. Your
+  shortcut shows or hides it, whichever window has focus.
+  Background dimming does not apply in this mode.
+
 ## 0.2.1 - 2026-11-21
 
 - Fix your shortcut opening CLIamp as a regular window when your Hyprland
