@@ -202,7 +202,7 @@ ShellRoot {
       widget.selectedIndex = 4
       keyCatcher.activateRequested()
       verify(!widget.dimBackground)
-      keyCatcher.textKey("d")
+      keyCatcher.textKey("d", Qt.NoModifier)
       verify(widget.dimBackground)
 
       widget.close()
