@@ -8,6 +8,8 @@
   Background dimming does not apply in this mode.
 - Group the settings panel: your shortcut first, then **Appearance** for edge,
   position, and size, then **Behavior** for dimming and Keep open.
+- Start CLIamp with the flags of your own shortcut, such as
+  `cliamp --playlist Tracks --auto-play`.
 
 ## 0.2.1 - 2026-11-21
 

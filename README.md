@@ -30,6 +30,17 @@ Background dimming applies only to the drop-down, not while **Keep open** is on.
 Your existing CLIamp music shortcut works with the drop-down. Omarchy's default
 is **Super+Shift+Alt+M**; the demo uses a custom **F12** binding.
 
+Flags after `cliamp` in that shortcut carry over to the drop-down. To start a
+saved playlist, for example:
+
+```lua
+o.bind("F12", "CLIamp drop-down", { tui = "cliamp --playlist Tracks --auto-play", focus = true })
+```
+
+Values are split on spaces, so use one-word names. See CLIamp's
+[command-line options](https://github.com/bjarneo/cliamp/blob/main/docs/cli.md)
+for more.
+
 ## Install
 
 Requires Omarchy Quattro, Hyprland **0.56.2 or newer**, and CLIamp. The helpers

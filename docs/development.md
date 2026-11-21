@@ -27,8 +27,11 @@ that monitor gains focus, because `toggle_special` only acts on the focused one.
 `lib/bindings.lua` evaluates the configured Lua bindings with a recording
 adapter because Hyprland exposes opaque dispatcher IDs. It recognizes CLIamp
 launch commands and preserves their binding options. The source configuration
-is not rewritten. `scripts/launch_cliamp.sh` uses Omarchy's TUI launcher and
-starts plain CLIamp with no playback arguments.
+is not rewritten. The flags after `cliamp` in the first matching binding are
+stored in `_G.cliamp_launch_args` on every sync, so removing them takes effect
+too. `scripts/launch_cliamp.sh` receives them as one string, splits it on
+whitespace as Omarchy's TUI launcher does, and starts CLIamp through that
+launcher.
 
 Window changes dispatch immediately. Typed values remain drafts until Enter
 or focus loss. Settings are saved through Omarchy's `updateEntryInline` API;
