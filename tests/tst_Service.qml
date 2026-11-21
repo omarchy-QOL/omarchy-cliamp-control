@@ -199,7 +199,7 @@ ShellRoot {
       compare(saved[1].dimBackground, true)
 
       const keyCatcher = row.parent.parent
-      widget.selectedIndex = 4
+      widget.selectedIndex = widget.dimIndex
       keyCatcher.activateRequested()
       verify(!widget.dimBackground)
       keyCatcher.textKey("d", Qt.NoModifier)

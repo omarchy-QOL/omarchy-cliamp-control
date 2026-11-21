@@ -6,6 +6,8 @@
   while you work in other windows, and Alt+Tab or a click reaches them. Your
   shortcut shows or hides it, whichever window has focus.
   Background dimming does not apply in this mode.
+- Group the settings panel: your shortcut first, then **Appearance** for edge,
+  position, and size, then **Behavior** for dimming and Keep open.
 
 ## 0.2.1 - 2026-11-21
 

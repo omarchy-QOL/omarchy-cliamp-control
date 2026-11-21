@@ -42,7 +42,14 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
-  readonly property int keybindingIndex: 6
+  // Cursor order follows the rows top to bottom.
+  readonly property int keybindingIndex: 0
+  readonly property int edgeIndex: 1
+  readonly property int placementIndex: 2
+  readonly property int widthIndex: 3
+  readonly property int heightIndex: 4
+  readonly property int dimIndex: 5
+  readonly property int keepOpenIndex: 6
   readonly property int settingsCount: 7
   readonly property string tooltip: actionTooltip("CLIamp", [
     ["Left click:", "toggle"],
@@ -125,13 +132,13 @@ Panel {
   }
 
   function activateSelected() {
-    if (selectedIndex === 0) cycleEdge()
-    else if (selectedIndex === 1) cyclePlacement()
-    else if (selectedIndex === 2) widthRow.focusField()
-    else if (selectedIndex === 3) heightRow.focusField()
-    else if (selectedIndex === 4) toggleDimming()
-    else if (selectedIndex === 5) toggleKeepOpen()
-    else if (selectedIndex === keybindingIndex) launchKeybindings()
+    if (selectedIndex === keybindingIndex) launchKeybindings()
+    else if (selectedIndex === edgeIndex) cycleEdge()
+    else if (selectedIndex === placementIndex) cyclePlacement()
+    else if (selectedIndex === widthIndex) widthRow.focusField()
+    else if (selectedIndex === heightIndex) heightRow.focusField()
+    else if (selectedIndex === dimIndex) toggleDimming()
+    else if (selectedIndex === keepOpenIndex) toggleKeepOpen()
   }
 
   onSettingsChanged: receiveSettings()
@@ -197,8 +204,9 @@ Panel {
         if (dy !== 0)
           root.selectedIndex = (root.selectedIndex + dy
             + root.settingsCount) % root.settingsCount
-        if (dx !== 0 && root.selectedIndex === 0) root.cycleEdge(dx)
-        else if (dx !== 0 && root.selectedIndex === 1)
+        if (dx !== 0 && root.selectedIndex === root.edgeIndex)
+          root.cycleEdge(dx)
+        else if (dx !== 0 && root.selectedIndex === root.placementIndex)
           root.cyclePlacement(dx)
       }
       onActivateRequested: root.activateSelected()
@@ -277,11 +285,34 @@ Panel {
         }
 
         MenuRow {
+          label: "Launch keybinding"
+          value: root.geometryService
+            ? root.geometryService.bindingLabel : "..."
+          hasCursor: root.selectedIndex === root.keybindingIndex
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.keybindingIndex
+          }
+          onClicked: root.launchKeybindings()
+        }
+
+        PanelSeparator {
+          foreground: root.foreground
+        }
+
+        PanelSectionHeader {
+          text: "APPEARANCE"
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+        }
+
+        MenuRow {
           label: "Screen edge"
           value: root.edge
           tooltipText: "Choose where the drop-down meets the screen."
-          hasCursor: root.selectedIndex === 0
-          onHovered: function(on) { if (on) root.selectedIndex = 0 }
+          hasCursor: root.selectedIndex === root.edgeIndex
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.edgeIndex
+          }
           onClicked: root.cycleEdge()
         }
 
@@ -289,8 +320,10 @@ Panel {
           label: root.positionAxis
           value: root.positionLabel
           tooltipText: "Position along the selected edge."
-          hasCursor: root.selectedIndex === 1
-          onHovered: function(on) { if (on) root.selectedIndex = 1 }
+          hasCursor: root.selectedIndex === root.placementIndex
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.placementIndex
+          }
           onClicked: root.cyclePlacement()
         }
 
@@ -298,9 +331,11 @@ Panel {
           id: widthRow
           objectName: "widthRow"
           label: "Window width"
-          hasCursor: root.selectedIndex === 2
+          hasCursor: root.selectedIndex === root.widthIndex
           value: root.windowWidth
-          onHovered: function(on) { if (on) root.selectedIndex = 2 }
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.widthIndex
+          }
           onModified: function(value) {
             root.persistDimension("windowWidth", value)
           }
@@ -310,12 +345,24 @@ Panel {
           id: heightRow
           objectName: "heightRow"
           label: "Window height"
-          hasCursor: root.selectedIndex === 3
+          hasCursor: root.selectedIndex === root.heightIndex
           value: root.windowHeight
-          onHovered: function(on) { if (on) root.selectedIndex = 3 }
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.heightIndex
+          }
           onModified: function(value) {
             root.persistDimension("windowHeight", value)
           }
+        }
+
+        PanelSeparator {
+          foreground: root.foreground
+        }
+
+        PanelSectionHeader {
+          text: "BEHAVIOR"
+          foreground: root.foreground
+          fontFamily: root.fontFamily
         }
 
         ToggleRow {
@@ -326,8 +373,10 @@ Panel {
           tooltipText: root.keepOpen
             ? "Not applied while Keep open is on."
             : "Applied only while the CLIamp drop-down is visible."
-          hasCursor: root.selectedIndex === 4
-          onHovered: function(on) { if (on) root.selectedIndex = 4 }
+          hasCursor: root.selectedIndex === root.dimIndex
+          onHovered: function(on) {
+            if (on) root.selectedIndex = root.dimIndex
+          }
           onToggled: root.toggleDimming()
         }
 
@@ -338,20 +387,11 @@ Panel {
           checked: root.keepOpen
           tooltipText: "Stay visible as a pinned window while other windows"
             + " have focus."
-          hasCursor: root.selectedIndex === 5
-          onHovered: function(on) { if (on) root.selectedIndex = 5 }
-          onToggled: root.toggleKeepOpen()
-        }
-
-        MenuRow {
-          label: "Launch keybinding"
-          value: root.geometryService
-            ? root.geometryService.bindingLabel : "..."
-          hasCursor: root.selectedIndex === root.keybindingIndex
+          hasCursor: root.selectedIndex === root.keepOpenIndex
           onHovered: function(on) {
-            if (on) root.selectedIndex = root.keybindingIndex
+            if (on) root.selectedIndex = root.keepOpenIndex
           }
-          onClicked: root.launchKeybindings()
+          onToggled: root.toggleKeepOpen()
         }
 
         Text {
