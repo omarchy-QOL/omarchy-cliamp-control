@@ -22,7 +22,7 @@ that monitor gains focus, because `toggle_special` only acts on the focused one.
 adapter because Hyprland exposes opaque dispatcher IDs. It recognizes CLIamp
 launch commands and preserves their binding options. The source configuration
 is not rewritten. `scripts/launch_cliamp.sh` uses Omarchy's TUI launcher and
-passes the optional thunder recording when present.
+starts plain CLIamp with no playback arguments.
 
 Window changes dispatch immediately. Typed values remain drafts until Enter
 or focus loss. Settings are saved through Omarchy's `updateEntryInline` API;

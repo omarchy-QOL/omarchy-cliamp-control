@@ -3,7 +3,6 @@
 set -euo pipefail
 
 readonly MANAGED_CLASS="org.omarchy.cliamp.quake"
-readonly THUNDER_ASSET="${CLIAMP_THUNDER_ASSET:-${XDG_DATA_HOME:-$HOME/.local/share}/cliamp/thunder.webm}"
 
 notify_error() {
   command -v hyprctl >/dev/null 2>&1 || return 0
@@ -21,9 +20,4 @@ require_command() {
 require_command cliamp
 require_command omarchy-launch-or-focus-tui
 
-launch_args=("--app-id=$MANAGED_CLASS" cliamp)
-if [[ -r $THUNDER_ASSET ]]; then
-  launch_args+=(--auto-play "$THUNDER_ASSET")
-fi
-
-exec omarchy-launch-or-focus-tui "${launch_args[@]}"
+exec omarchy-launch-or-focus-tui "--app-id=$MANAGED_CLASS" cliamp

@@ -34,9 +34,8 @@ omarchy plugin add \
   https://github.com/omarchy-QOL/omarchy-cliamp-control.git --enable
 ```
 
-No extra setup is needed. If you have a `~/.local/share/cliamp/thunder.webm`
-file, it plays automatically when CLIamp opens. Otherwise, CLIamp starts
-normally.
+No extra setup is needed. CLIamp opens exactly as it would in a terminal, with
+your own library, playlists, and settings.
 
 ## Update or remove
 

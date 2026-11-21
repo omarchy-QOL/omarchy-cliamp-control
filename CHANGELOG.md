@@ -1,11 +1,13 @@
 # Changelog
 
-## 0.2.1 - 2026-11-07
+## 0.2.1 - 2026-11-21
 
 - Fix your shortcut opening CLIamp as a regular window when your Hyprland
   config loops over windows, layers, or monitors while it loads. The binding
   scan no longer hangs and keeps a CPU core busy, and it gives up after 10
   seconds instead of running forever.
+- Open CLIamp exactly as it starts in a terminal. It no longer auto-plays
+  `~/.local/share/cliamp/thunder.webm` when that file exists.
 
 ## 0.2.0 - 2026-11-03
 
