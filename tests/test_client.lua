@@ -179,7 +179,7 @@ client.toggle()
 assert(#launches == 1, "rapid cold toggles must launch only once")
 assert(launches[1].rules.workspace == "special:cliamp silent")
 assert(launches[1].rules.no_initial_focus and launches[1].rules.float == nil)
-assert(launches[1][1] == "bash '/tmp/player'\\''s launcher.sh'")
+assert(launches[1][1] == "bash '/tmp/player'\\''s launcher.sh' ''")
 special.visible = false
 monitor.active_special_workspace = nil
 windows = {player}
@@ -236,9 +236,14 @@ assert(not player.pinned and player.workspace == special,
 client.configure("test", 22, "Top", "Center", 850, 425, 1, 1)
 windows, active = {ordinary}, nil
 local launched = #launches
+_G.cliamp_launch_args = "--playlist it's"
 client.toggle()
 client.toggle()
 assert(#launches == launched + 1 and not special.visible)
+assert(launches[#launches][1]
+    == "bash '/tmp/player'\\''s launcher.sh' '--playlist it'\\''s'",
+  "shortcut flags were not passed to the launcher")
+_G.cliamp_launch_args = nil
 windows = {player}
 listeners["window.open"](player)
 assert(player.pinned and active == player, "a cold launch was not shown")

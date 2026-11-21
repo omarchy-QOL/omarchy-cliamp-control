@@ -79,11 +79,13 @@ load_config(assert(os.getenv("OMARCHY_PATH"), "OMARCHY_PATH is required")
   .. "/default/hypr/bootstrap.lua")
 load_config(config)
 
-local function is_cliamp(command)
-  if type(command) ~= "string" then return false end
+-- Returns the arguments after cliamp, or nil for any other command.
+local function cliamp_args(command)
+  if type(command) ~= "string" then return nil end
   command = command:gsub("['\"]", "") .. " "
-  return command:match("^omarchy%-launch%-or%-focus%-tui%s+cliamp%s")
-    or command:match("^omarchy%-launch%-tui%s+cliamp%s")
+  local args = command:match("^omarchy%-launch%-or%-focus%-tui%s+cliamp%s(.*)$")
+    or command:match("^omarchy%-launch%-tui%s+cliamp%s(.*)$")
+  return args and args:match("^%s*(.-)%s*$")
 end
 
 local function json_string(value)
@@ -94,11 +96,16 @@ end
 
 local keys = {}
 for key, binding in pairs(bindings) do
-  if is_cliamp(binding.command) then keys[#keys + 1] = key end
+  if cliamp_args(binding.command) then keys[#keys + 1] = key end
 end
 table.sort(keys)
 
-local expressions, labels = {}, {}
+-- The drop-down starts CLIamp with the flags of the user's own shortcut.
+local launch_args = keys[1] and cliamp_args(bindings[keys[1]].command) or ""
+local expressions = {
+  string.format("_G.cliamp_launch_args = %q", launch_args),
+}
+local labels = {}
 local command = string.format("function() dofile(%q).toggle() end", controller)
 for _, key in ipairs(keys) do
   expressions[#expressions + 1] = string.format(

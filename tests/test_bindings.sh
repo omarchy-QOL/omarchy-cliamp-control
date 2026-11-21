@@ -27,7 +27,7 @@ hl.bind("F12", hl.dsp.exec_cmd("omarchy-launch-tui cliamp"))
 hl.unbind("F12")
 hl.bind("F11", hl.dsp.exec_cmd("omarchy-launch-tui cliamp"))
 hl.unbind("F11")
-o.bind("F11", "Player", { tui = "cliamp" },
+o.bind("F11", "Player", { tui = "cliamp --playlist Tracks  --auto-play" },
   { repeating = false, dont_inhibit = true })
 o.bind("SUPER + A", "Browser", { omarchy = "browser" })
 o.bind("SUPER + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
@@ -70,6 +70,8 @@ assert(opts.device.inclusive)
 assert(opts.device.list[1] == "kbd one")
 assert(opts.device.list[2] == 'quote"and\\slash')
 assert(not seen.F12 and not seen["SUPER + H"] and not seen["SUPER + K"])
+assert(_G.cliamp_launch_args == "--playlist Tracks  --auto-play",
+  "shortcut flags were not forwarded")
 LUA
 
 controller="$TEMP_ROOT/player's control.lua"
@@ -91,7 +93,9 @@ LUA
 : >"$CLIAMP_HYPR_CONFIG"
 rm "$CLIAMP_TEST_EXPRESSION"
 [[ $("$TEST_DIR/../scripts/sync_bindings.sh") == '[]' ]]
-[[ ! -e $CLIAMP_TEST_EXPRESSION ]]
+# A removed shortcut must not leave its old flags behind.
+[[ $(<"$CLIAMP_TEST_EXPRESSION") == '_G.cliamp_launch_args = ""' ]]
+rm "$CLIAMP_TEST_EXPRESSION"
 printf 'error("broken config")\n' >"$CLIAMP_HYPR_CONFIG"
 if "$TEST_DIR/../scripts/sync_bindings.sh" 2>"$TEMP_ROOT/error"; then
   printf 'invalid configuration was accepted\n' >&2

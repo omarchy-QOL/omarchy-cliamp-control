@@ -20,4 +20,9 @@ require_command() {
 require_command cliamp
 require_command omarchy-launch-or-focus-tui
 
-exec omarchy-launch-or-focus-tui "--app-id=$MANAGED_CLASS" cliamp
+# Flags from the user's CLIamp shortcut arrive as one string. Split them on
+# whitespace, as Omarchy's own TUI launcher does.
+read -r -a cliamp_args <<<"${1:-}"
+
+exec omarchy-launch-or-focus-tui "--app-id=$MANAGED_CLASS" cliamp \
+  "${cliamp_args[@]}"

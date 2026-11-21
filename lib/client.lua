@@ -260,6 +260,10 @@ function M.install(epoch, launcher, revision, edge, placement, width, height,
     dim_background, keep_open)
 end
 
+local function shell_quote(value)
+  return "'" .. value:gsub("'", "'\\''") .. "'"
+end
+
 local function launch()
   state.launching = true
   state.launch_timer = hl.timer(function()
@@ -267,7 +271,8 @@ local function launch()
     state.show_on_open = false
     report("error", "CLIamp window did not appear")
   end, {timeout = 5000, type = "oneshot"})
-  hl.exec_cmd("bash '" .. state.launcher:gsub("'", "'\\''") .. "'", {
+  hl.exec_cmd("bash " .. shell_quote(state.launcher) .. " "
+      .. shell_quote(_G.cliamp_launch_args or ""), {
     workspace = workspace .. " silent", no_initial_focus = true,
   })
 end

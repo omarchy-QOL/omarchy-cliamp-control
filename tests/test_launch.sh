@@ -37,6 +37,13 @@ grep -Fxq 'launch --app-id=org.omarchy.cliamp.quake cliamp' \
   "$CLIAMP_TEST_CALLS"
 
 : >"$CLIAMP_TEST_CALLS"
+PATH="$MOCK_BIN:$PATH" bash "$TEST_DIR/../scripts/launch_cliamp.sh" \
+  " --playlist Tracks  --auto-play "
+grep -Fxq \
+  'launch --app-id=org.omarchy.cliamp.quake cliamp --playlist Tracks --auto-play' \
+  "$CLIAMP_TEST_CALLS"
+
+: >"$CLIAMP_TEST_CALLS"
 rm -f -- "$MOCK_BIN/cliamp"
 if PATH="$MOCK_BIN" /bin/bash "$TEST_DIR/../scripts/launch_cliamp.sh"; then
   printf 'missing CLIamp binary did not fail lazy launch\n' >&2
