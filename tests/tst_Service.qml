@@ -205,6 +205,16 @@ ShellRoot {
       keyCatcher.textKey("d", Qt.NoModifier)
       verify(widget.dimBackground)
 
+      const keepRow = findChild(widget, "keepOpenRow")
+      verify(keepRow && findChild(widget, "keepOpenSwitch"))
+      verify(!widget.keepOpen)
+      mouseClick(keepRow, 4, keepRow.height / 2)
+      verify(widget.keepOpen)
+      verify(compositor.commands[compositor.commands.length - 1]
+        .includes(",850,425,1,1) end"))
+      keyCatcher.textKey("o", Qt.NoModifier)
+      verify(!widget.keepOpen)
+
       widget.close()
       widget.destroy()
       bar.destroy()

@@ -60,7 +60,7 @@ hl = {
 
 local client = dofile(arg[1])
 client.install("test", "/tmp/player's launcher.sh", 0,
-  "Top", "Start", 850, 425, 1, 0)
+  "Top", "Start", 850, 425, 1, 0, 0)
 local rule = rules[#rules]
 assert(rule.workspace == "special:cliamp" and rule.gaps_in == 0 and rule.no_border)
 assert(rule.animation == "slide top")
@@ -159,7 +159,7 @@ client.configure("test", 13, "Top", "Center", 850, 625, 0)
 dim_special = 0.35
 count = #actions
 client.install("test", "/tmp/player's launcher.sh", 14,
-  "Top", "Center", 850, 625, 0, 1)
+  "Top", "Center", 850, 625, 0, 0, 1)
 assert(dim_special == 0 and rendered_dim == 0 and #actions == count,
   "a config reload must not replay the workspace")
 client.hide()
@@ -188,6 +188,61 @@ listeners["window.open"](player)
 for index = count + 1, #actions do
   assert(actions[index].kind ~= "focus", "a late client must not reclaim focus")
 end
+-- Keep-open mode pins CLIamp on the regular workspace instead.
+local active
+hl.get_active_window = function() return active end
+hl.dsp.window = {
+  pin = function(args) return action("pin", args) end,
+  move = function(args) return action("move", args) end,
+  float = function(args) return action("float", args) end,
+  resize = function(args) return action("resize", args) end,
+}
+local base_dispatch = hl.dispatch
+hl.dispatch = function(value)
+  base_dispatch(value)
+  local args = value.args
+  if type(args) ~= "table" then return end
+  assert(args.window == nil or args.window == "address:0xabc")
+  if value.kind == "pin" then player.pinned = args.action == "enable"
+  elseif value.kind == "float" then player.floating = args.action == "enable"
+  elseif value.kind == "resize" then player.size = {args.x, args.y}
+  elseif value.kind == "move" and args.workspace then
+    assert(args.follow == false)
+    player.workspace = args.workspace == "special:cliamp" and special
+      or {name = args.workspace}
+  elseif value.kind == "move" then player.at = {args.x, args.y}
+  elseif value.kind == "focus" then active = player end
+end
+monitor.x, monitor.y = 1080, 0
+
+client.configure("test", 20, "Top", "Center", 850, 425, 1, 1)
+client.toggle()
+assert(not special.visible, "keep-open mode must not open the special workspace")
+assert(player.pinned and player.floating and player.workspace.name == "2")
+assert(player.size[1] == 850 and player.size[2] == 425)
+assert(player.at[1] == 1615 and player.at[2] == 26, "pinned window misplaced")
+assert(active == player and dim_special == 0.35)
+active = ordinary
+client.toggle()
+assert(not player.pinned and not player.floating and player.workspace == special,
+  "a shown pinned window must hide whether or not it has focus")
+assert(active == ordinary, "hiding must not move focus")
+client.toggle()
+assert(player.pinned)
+client.configure("test", 21, "Top", "Center", 850, 425, 1, 0)
+assert(not player.pinned and player.workspace == special,
+  "leaving keep-open mode must hide the pinned window")
+
+client.configure("test", 22, "Top", "Center", 850, 425, 1, 1)
+windows, active = {ordinary}, nil
+local launched = #launches
+client.toggle()
+client.toggle()
+assert(#launches == launched + 1 and not special.visible)
+windows = {player}
+listeners["window.open"](player)
+assert(player.pinned and active == player, "a cold launch was not shown")
+
 client.stop("wrong-instance")
 assert(_G.cliamp_control)
 client.stop("test")

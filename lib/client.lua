@@ -13,6 +13,18 @@ local function managed_window()
   end
 end
 
+local function target(window)
+  return "address:" .. window.address
+end
+
+-- Keep-open mode shows CLIamp as a pinned float on the regular workspace,
+-- because Hyprland hides a special workspace once a regular window takes
+-- focus and cycles windows only within the focused workspace.
+local function pinned_shown(window)
+  return window ~= nil and window.pinned == true and window.workspace ~= nil
+    and window.workspace.name ~= workspace
+end
+
 local function set_undim(undim)
   if undim == state.dim_overridden then return end
   if undim then
@@ -78,6 +90,47 @@ function M.gaps(monitor, edge, placement, width, height)
     bottom = vertical - top, left = left}, width, height
 end
 
+local function place(window, monitor)
+  local gaps, width, height = M.gaps(monitor,
+    state.edge, state.placement, state.width, state.height)
+  local reserved = monitor.reserved
+  local x = monitor.x + reserved.left + gaps.left
+  local y = monitor.y + reserved.top + gaps.top
+  local key = table.concat({window.address, monitor.name, x, y, width, height},
+    ":")
+  if state.place_key == key then return end
+  state.place_key = key
+  hl.dispatch(hl.dsp.window.resize({x = width, y = height,
+    window = target(window)}))
+  hl.dispatch(hl.dsp.window.move({x = x, y = y, window = target(window)}))
+end
+
+local function show_pinned(window, monitor)
+  local active = monitor.active_workspace
+  if not active then return end
+  if window.pinned then
+    hl.dispatch(hl.dsp.window.pin({action = "disable", window = target(window)}))
+  end
+  hl.dispatch(hl.dsp.window.move({workspace = active.id > 0
+    and tostring(active.id) or "name:" .. active.name,
+    follow = false, window = target(window)}))
+  hl.dispatch(hl.dsp.window.float({action = "enable", window = target(window)}))
+  hl.dispatch(hl.dsp.window.pin({action = "enable", window = target(window)}))
+  state.place_key = nil
+  place(window, monitor)
+  hl.dispatch(hl.dsp.focus({window = target(window)}))
+end
+
+-- Leaving the window tiled on the hidden workspace keeps the drop-down mode
+-- valid if the setting changes while CLIamp is hidden.
+local function hide_pinned(window)
+  hl.dispatch(hl.dsp.window.pin({action = "disable", window = target(window)}))
+  hl.dispatch(hl.dsp.window.move({workspace = workspace, follow = false,
+    window = target(window)}))
+  hl.dispatch(hl.dsp.window.float({action = "disable", window = target(window)}))
+  state.place_key = nil
+end
+
 local function fit(monitor)
   sync_dim()
   if not monitor then
@@ -97,7 +150,9 @@ local function fit(monitor)
       on_created_empty = ""})
     hl.exec_scheduled_prop_refresh_immediately()
   end
-  if managed_window() then report("geometry", width, height)
+  local window = managed_window()
+  if pinned_shown(window) and window.monitor then place(window, window.monitor) end
+  if window then report("geometry", width, height)
   else report("absent") end
 end
 
@@ -109,8 +164,16 @@ function M.apply(monitor)
   if not ok then report("error", tostring(error)) end
 end
 
+local function hide_overlay()
+  local ws = hl.get_workspace(workspace)
+  if ws and ws.visible then
+    hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
+    hl.exec_scheduled_prop_refresh_immediately()
+  end
+end
+
 function M.configure(epoch, revision, edge, placement, width, height,
-    dim_background)
+    dim_background, keep_open)
   assert(state and state.epoch == epoch, "CLIamp controller is not installed")
   assert(edge == "Top" or edge == "Right" or edge == "Bottom" or edge == "Left")
   assert(placement == "Start" or placement == "Center" or placement == "End")
@@ -119,17 +182,20 @@ function M.configure(epoch, revision, edge, placement, width, height,
   state.revision, state.edge, state.placement, state.width, state.height =
     revision, edge, placement, width, height
   state.dim_background = dim_background == 1
+  state.keep_open = keep_open == 1
+  -- A mode change hides CLIamp; the next toggle shows it in the new mode.
+  local window = managed_window()
+  if state.keep_open then hide_overlay()
+  elseif pinned_shown(window) then hide_pinned(window) end
   M.apply()
 end
 
 function M.hide()
   if not state then return end
-  local ws = hl.get_workspace(workspace)
-  if ws and ws.visible then
-    hl.dispatch(hl.dsp.workspace.toggle_special("cliamp"))
-    hl.exec_scheduled_prop_refresh_immediately()
-    M.apply()
-  end
+  local window = managed_window()
+  if pinned_shown(window) then hide_pinned(window) end
+  hide_overlay()
+  M.apply()
 end
 
 function M.stop(epoch, config_reloaded)
@@ -145,7 +211,7 @@ function M.stop(epoch, config_reloaded)
 end
 
 function M.install(epoch, launcher, revision, edge, placement, width, height,
-    dim_background, config_reloaded)
+    dim_background, keep_open, config_reloaded)
   -- A config reload leaves Hyprland's copied dim on the visible workspace.
   local dim_shown = state ~= nil and config_reloaded == 1 and state.dim_shown
   if state then M.stop(state.epoch, config_reloaded) end
@@ -154,13 +220,24 @@ function M.install(epoch, launcher, revision, edge, placement, width, height,
   _G.cliamp_control = state
   state.window_rule = hl.window_rule({name = "cliamp-control",
     match = {initial_class = "^org[.]omarchy[.]cliamp[.]quake$"},
-    workspace = workspace .. " silent", no_initial_focus = true})
+    workspace = workspace .. " silent", no_initial_focus = true,
+    border_size = 0})
   state.listeners[1] = hl.on("window.open", function(window)
     if not managed(window) then return end
     state.launching = false
     if state.launch_timer then state.launch_timer:set_enabled(false) end
     M.apply()
-    if window.workspace and window.workspace.visible then
+    if state.keep_open and state.show_on_open then
+      state.show_on_open = false
+      local monitor = hl.get_active_monitor()
+      if monitor then show_pinned(window, monitor) end
+      -- no_initial_focus applies after this event, so focus once it settles.
+      state.open_focus_timer = hl.timer(function()
+        if pinned_shown(managed_window()) then
+          hl.dispatch(hl.dsp.focus({window = target(window)}))
+        end
+      end, {timeout = 50, type = "oneshot"})
+    elseif window.workspace and window.workspace.visible then
       hl.dispatch(hl.dsp.focus({window = "address:" .. window.address}))
     end
   end)
@@ -180,7 +257,31 @@ function M.install(epoch, launcher, revision, edge, placement, width, height,
       {timeout = 1, type = "oneshot"})
   end)
   M.configure(epoch, revision, edge, placement, width, height,
-    dim_background)
+    dim_background, keep_open)
+end
+
+local function launch()
+  state.launching = true
+  state.launch_timer = hl.timer(function()
+    state.launching = false
+    state.show_on_open = false
+    report("error", "CLIamp window did not appear")
+  end, {timeout = 5000, type = "oneshot"})
+  hl.exec_cmd("bash '" .. state.launcher:gsub("'", "'\\''") .. "'", {
+    workspace = workspace .. " silent", no_initial_focus = true,
+  })
+end
+
+local function toggle_pinned(monitor)
+  hide_overlay()
+  local window = managed_window()
+  if not window then
+    state.show_on_open = true
+    if not state.launching then launch() end
+    return
+  end
+  if pinned_shown(window) then hide_pinned(window)
+  else show_pinned(window, monitor) end
 end
 
 function M.toggle(monitor_name, origin_workspace)
@@ -190,6 +291,10 @@ function M.toggle(monitor_name, origin_workspace)
   if monitor_name and (monitor.name ~= monitor_name
       or not monitor.active_workspace
       or monitor.active_workspace.id ~= origin_workspace) then return end
+  if state.keep_open then
+    toggle_pinned(monitor)
+    return M.apply(monitor)
+  end
   M.apply(monitor)
   local open = monitor.active_special_workspace
   if not open or open.name ~= workspace then
@@ -201,14 +306,7 @@ function M.toggle(monitor_name, origin_workspace)
   local visible = monitor.active_special_workspace
   if visible and visible.name == workspace
       and not state.launching and not managed_window() then
-    state.launching = true
-    state.launch_timer = hl.timer(function()
-      state.launching = false
-      report("error", "CLIamp window did not appear")
-    end, {timeout = 5000, type = "oneshot"})
-    hl.exec_cmd("bash '" .. state.launcher:gsub("'", "'\\''") .. "'", {
-      workspace = workspace .. " silent", no_initial_focus = true,
-    })
+    launch()
   end
   M.apply(monitor)
 end

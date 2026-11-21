@@ -40,14 +40,15 @@ Item {
   function geometryArgs() {
     return [epoch, revision, settings.edge, settings.placement,
       settings.windowWidth, settings.windowHeight,
-      settings.dimBackground ? 1 : 0]
+      settings.dimBackground ? 1 : 0, settings.keepOpen ? 1 : 0]
   }
 
   function receiveSettings(entry) {
     if (persistPending || persisting || tearingDown) return
     if (!entry || (entry.edge === undefined && entry.placement === undefined
         && entry.windowWidth === undefined && entry.windowHeight === undefined
-        && entry.dimBackground === undefined))
+        && entry.dimBackground === undefined
+        && entry.keepOpen === undefined))
       return
     const next = Settings.normalize(entry)
     if (JSON.stringify(next) === JSON.stringify(settings)) return

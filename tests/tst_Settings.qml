@@ -9,16 +9,17 @@ TestCase {
 
   function test_defaultsAndValidation() {
     compare(Settings.normalize({}), {
-      edge: "Top", placement: "Center", dimBackground: true,
+      edge: "Top", placement: "Center", dimBackground: true, keepOpen: false,
       windowWidth: 1200, windowHeight: 600
     })
     compare(Settings.normalize({
       edge: "Invalid", placement: "Invalid", dimBackground: false,
-      windowWidth: 1.5, windowHeight: Infinity
+      keepOpen: "yes", windowWidth: 1.5, windowHeight: Infinity
     }), {
-      edge: "Top", placement: "Center", dimBackground: false,
+      edge: "Top", placement: "Center", dimBackground: false, keepOpen: false,
       windowWidth: 1200, windowHeight: 600
     })
+    compare(Settings.normalize({keepOpen: true}).keepOpen, true)
     compare(Settings.dimension("850", 1200), 850)
     compare(Settings.dimension(0, 1200), 1200)
     compare(Settings.dimension(9999, 1200), 9999)

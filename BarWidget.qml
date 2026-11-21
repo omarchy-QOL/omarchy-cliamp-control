@@ -24,6 +24,7 @@ Panel {
   readonly property string edge: config.edge
   readonly property string placement: config.placement
   readonly property bool dimBackground: config.dimBackground
+  readonly property bool keepOpen: config.keepOpen
   readonly property bool verticalEdge: edge === "Left" || edge === "Right"
   readonly property string positionLabel: {
     const labels = verticalEdge
@@ -41,8 +42,8 @@ Panel {
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property string keybindingsScript: Paths.localPath(
     Qt.resolvedUrl("open-keybindings.sh"))
-  readonly property int keybindingIndex: 5
-  readonly property int settingsCount: 6
+  readonly property int keybindingIndex: 6
+  readonly property int settingsCount: 7
   readonly property string tooltip: actionTooltip("CLIamp", [
     ["Left click:", "toggle"],
     ["Right click:", "window settings"]
@@ -118,12 +119,18 @@ Panel {
       geometryService.setSetting("dimBackground", !dimBackground)
   }
 
+  function toggleKeepOpen() {
+    commitFields()
+    if (geometryService) geometryService.setSetting("keepOpen", !keepOpen)
+  }
+
   function activateSelected() {
     if (selectedIndex === 0) cycleEdge()
     else if (selectedIndex === 1) cyclePlacement()
     else if (selectedIndex === 2) widthRow.focusField()
     else if (selectedIndex === 3) heightRow.focusField()
     else if (selectedIndex === 4) toggleDimming()
+    else if (selectedIndex === 5) toggleKeepOpen()
     else if (selectedIndex === keybindingIndex) launchKeybindings()
   }
 
@@ -204,6 +211,7 @@ Panel {
         else if (key === "w") widthRow.focusField()
         else if (key === "h") heightRow.focusField()
         else if (key === "d") root.toggleDimming()
+        else if (key === "o") root.toggleKeepOpen()
         else if (key === "k") root.launchKeybindings()
       }
 
@@ -312,12 +320,27 @@ Panel {
 
         ToggleRow {
           objectName: "dimRow"
+          switchName: "dimSwitch"
           label: "Dim background"
           checked: root.dimBackground
-          tooltipText: "Applied only while the CLIamp drop-down is visible."
+          tooltipText: root.keepOpen
+            ? "Not applied while Keep open is on."
+            : "Applied only while the CLIamp drop-down is visible."
           hasCursor: root.selectedIndex === 4
           onHovered: function(on) { if (on) root.selectedIndex = 4 }
           onToggled: root.toggleDimming()
+        }
+
+        ToggleRow {
+          objectName: "keepOpenRow"
+          switchName: "keepOpenSwitch"
+          label: "Keep open"
+          checked: root.keepOpen
+          tooltipText: "Stay visible as a pinned window while other windows"
+            + " have focus."
+          hasCursor: root.selectedIndex === 5
+          onHovered: function(on) { if (on) root.selectedIndex = 5 }
+          onToggled: root.toggleKeepOpen()
         }
 
         MenuRow {
@@ -413,6 +436,7 @@ Panel {
 
     required property string label
     required property bool checked
+    property string switchName: ""
     property string tooltipText: ""
     property bool hasCursor: false
     signal toggled()
@@ -440,7 +464,7 @@ Panel {
 
         ToggleSwitch {
           id: toggle
-          objectName: "dimSwitch"
+          objectName: row.switchName
           anchors.centerIn: parent
           trackHeight: Style.space(16)
           checked: row.checked
